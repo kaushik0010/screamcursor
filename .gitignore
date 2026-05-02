@@ -1,0 +1,25 @@
+# OS Generated Files
+.DS_Store
+Thumbs.db
+
+# Wails / Go Build Output
+build/bin/
+*.exe
+*.app
+*.dmg
+wailsjs/go/
+frontend/wailsjs/go/
+
+# Frontend Node Modules & Build
+frontend/node_modules/
+frontend/dist/
+frontend/.npm/
+
+# Environment Variables
+.env
+.env.local
+
+# IDE / Editor Folders
+.vscode/
+.idea/
+*.swp
