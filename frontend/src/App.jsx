@@ -3,7 +3,7 @@ import { VisualEngine } from './engines/VisualEngine.js';
 import { AudioEngine } from './engines/AudioEngine.js';
 import { BaseFace } from './actors/BaseFace.js';
 import screamFile from './assets/sounds/scream-man.mp3';
-import { EventsOn, WindowSetSize, WindowCenter, WindowSetPosition } from '../wailsjs/runtime/runtime';
+import { EventsOn, WindowSetSize, WindowCenter, WindowSetPosition, WindowHide, WindowShow } from '../wailsjs/runtime/runtime';
 import { ToggleBoundlessMode } from '../wailsjs/go/main/App.js';
 import Dashboard from './components/Dashboard';
 
@@ -16,6 +16,9 @@ export default function App() {
 
     // --- NEW: PHYSICS REFERENCE FOR WEB FALLBACK ---
     const lastMouseRef = useRef({ x: 0, y: 0, time: performance.now() });
+
+    // --- NEW: INTERACTION LOCK TO BLOCK SPAM CLICKS ---
+    const isTransitioning = useRef(false);
 
     const [isDashboardOpen, setIsDashboardOpen] = useState(true);
 
@@ -71,6 +74,11 @@ export default function App() {
                 audioRef.current.setVolume(0);
             }
         });
+
+        // 2. THE SYSTEM TRAY RESCUE LISTENER
+        EventsOn('onForceOpenDashboard', () => {
+            setIsDashboardOpen(true);
+        });
     }, []);
 
     useEffect(() => {
@@ -81,22 +89,46 @@ export default function App() {
         }
     }, [isDashboardOpen]);
 
+    
+    // --- THE SHAPE SHIFTING LOGIC ---
+    
     const handleCloseDashboard = () => {
+        // If the window is currently moving, IGNORE THE CLICK entirely.
+        if (isTransitioning.current) return; 
+        
+        isTransitioning.current = true; // Lock the doors
         setIsDashboardOpen(false);
+
+        if (settingsRef.current.invisibleMode) {
+            WindowHide();
+            isTransitioning.current = false; // Unlock
+            return; 
+        }
+
         WindowSetSize(400, 400); 
-        const screenWidth = window.screen.availWidth;
-        const screenHeight = window.screen.availHeight;
-        WindowSetPosition(screenWidth - 420, screenHeight - 420);
+        
+        setTimeout(() => {
+            const screenWidth = window.screen.availWidth;
+            const screenHeight = window.screen.availHeight;
+            WindowSetPosition(screenWidth - 420, screenHeight - 420);
+            isTransitioning.current = false; // Unlock
+        }, 100);
     };
 
     const handleOpenDashboard = () => {
-        if (!isDashboardOpen) {
-            setIsDashboardOpen(true);
-            WindowSetSize(900, 500); 
-            setTimeout(() => {
-                WindowCenter();
-            }, 50);
-        }
+        // If it's already open, or currently moving, IGNORE THE CLICK.
+        if (isTransitioning.current || isDashboardOpen) return;
+        
+        isTransitioning.current = true; // Lock the doors
+        setIsDashboardOpen(true);
+            
+        WindowShow(); 
+        WindowSetSize(900, 500); 
+            
+        setTimeout(() => {
+            WindowCenter();
+            isTransitioning.current = false; // Unlock
+        }, 100);
     };
 
     // --- 2. THE WEB FALLBACK LISTENER (Used when Boundless is OFF) ---

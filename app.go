@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"math"
+	"os"
 	"syscall"
 	"time"
 	"unsafe"
 
+	"github.com/getlantern/systray"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -45,9 +47,62 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.isBoundless = true // Default to true for testing
 
-	// Launch the stealth tracker in a background goroutine
+	// 1. Launch the stealth tracker in a background goroutine
 	go a.startStealthTracker()
+
+	// 2. Boot the System Tray on a parallel background thread
+	go systray.Run(a.onTrayReady, a.onTrayExit)
 }
+
+// --- SYSTEM TRAY LOGIC ---
+
+func (a *App) onTrayReady() {
+	systray.SetIcon(getDummyIcon())
+	systray.SetTitle("Scream Cursor")
+	systray.SetTooltip("Scream Cursor - Running in Background")
+
+	mOpen := systray.AddMenuItem("Open Control Panel", "Restore the dashboard UI")
+	systray.AddSeparator()
+	mQuit := systray.AddMenuItem("Quit", "Completely close the application")
+
+	// Listen for tray clicks
+	go func() {
+		for {
+			select {
+			case <-mOpen.ClickedCh:
+				// 1. Force the OS Window back to center and resize
+				runtime.WindowSetSize(a.ctx, 900, 500)
+				runtime.WindowCenter(a.ctx)
+				runtime.WindowShow(a.ctx)
+
+				// 2. Fire an event to React to open the Dashboard Component!
+				runtime.EventsEmit(a.ctx, "onForceOpenDashboard")
+
+			case <-mQuit.ClickedCh:
+				// Kill the background tray and the Wails app entirely
+				systray.Quit()
+				runtime.Quit(a.ctx)
+				os.Exit(0)
+			}
+		}
+	}()
+}
+
+func (a *App) onTrayExit() {
+	// Clean up any OS resources here if needed
+}
+
+// A tiny 1x1 transparent PNG to prevent the app from crashing before we add a real icon
+func getDummyIcon() []byte {
+	return []byte{
+		137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82,
+		0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0,
+		0, 0, 11, 73, 68, 65, 84, 8, 215, 99, 96, 0, 2, 0, 0, 5, 0,
+		1, 226, 38, 5, 155, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+	}
+}
+
+// --- BOUNDLESS OS TRACKING LOGIC ---
 
 func (a *App) startStealthTracker() {
 	for {
@@ -71,8 +126,6 @@ func (a *App) startStealthTracker() {
 					speed = distance / float64(timeDiff)
 				}
 
-				// Emit bundled MouseData event
-				// Frontend now receives (x, y, and speed) simultaneously.
 				data := MouseData{
 					X:     float64(pt.X),
 					Y:     float64(pt.Y),
@@ -80,14 +133,12 @@ func (a *App) startStealthTracker() {
 				}
 				runtime.EventsEmit(a.ctx, "onGlobalMouseUpdate", data)
 
-				// Update last known stats
 				a.lastMouseX = pt.X
 				a.lastMouseY = pt.Y
 				a.lastMouseTime = currentTime
 			}
 		}
 
-		// Wait 16 milliseconds (~60fps polling rate)
 		time.Sleep(16 * time.Millisecond)
 	}
 }
