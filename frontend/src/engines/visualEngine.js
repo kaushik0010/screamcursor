@@ -24,10 +24,25 @@ export class VisualEngine {
         this.animate();
     }
 
+    // --- UPGRADED: DYNAMIC LOADING WITH MEMORY CLEANUP ---
     loadActor(actor) {
+        // 1. If there's an existing face, kill it properly
         if (this.currentActor) {
-            this.scene.remove(this.currentActor.getMesh());
+            const oldMesh = this.currentActor.getMesh();
+            this.scene.remove(oldMesh);
+
+            // Clean up Geometry and Materials to free up GPU RAM
+            if (oldMesh.geometry) oldMesh.geometry.dispose();
+            if (oldMesh.material) {
+                if (Array.isArray(oldMesh.material)) {
+                    oldMesh.material.forEach(m => m.dispose());
+                } else {
+                    oldMesh.material.dispose();
+                }
+            }
         }
+
+        // 2. Load the new actor
         this.currentActor = actor;
         this.scene.add(this.currentActor.getMesh());
     }
@@ -47,20 +62,16 @@ export class VisualEngine {
         if (!this.camera || !this.renderer) return;
 
         let targetWidth, targetHeight;
-
         if (mode === 'preview') {
-            // Pull the camera WAY back so the giant head looks small
-            this.camera.position.z = 300; 
+            this.camera.position.z = 170; 
             targetWidth = 380;
             targetHeight = 250;
         } else {
-            // Push the camera back to its original native position
             this.camera.position.z = 200; 
             targetWidth = window.innerWidth;
             targetHeight = window.innerHeight;
         }
 
-        // Force the exact math, completely bypassing DOM measuring
         this.renderer.setSize(targetWidth, targetHeight);
         this.camera.aspect = targetWidth / targetHeight;
         this.camera.updateProjectionMatrix();

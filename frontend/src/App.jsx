@@ -6,6 +6,15 @@ import screamFile from './assets/sounds/scream-man.mp3';
 import { EventsOn, WindowSetSize, WindowCenter, WindowSetPosition, WindowHide, WindowShow } from '../wailsjs/runtime/runtime';
 import { ToggleBoundlessMode } from '../wailsjs/go/main/App.js';
 import Dashboard from './components/Dashboard';
+// Add these right below your other imports
+import { DemonFace } from './actors/DemonFace.js';
+import demonScreamFile from './assets/sounds/scream-demon.mp3'; 
+
+import { CatFace } from './actors/CatFace.js';
+import catScreamFile from './assets/sounds/scream-frantic-cat.mp3';
+
+import { WomanFace } from './actors/WomanFace.js';
+import womanScreamFile from './assets/sounds/scream-woman.mp3';
 
 export default function App() {
     const canvasRef = useRef(null);
@@ -21,6 +30,8 @@ export default function App() {
     const isTransitioning = useRef(false);
 
     const [isDashboardOpen, setIsDashboardOpen] = useState(true);
+
+    const [activeEntity, setActiveEntity] = useState('base'); // 'base', 'demon', or 'cat'
 
     const settingsRef = useRef({
         runInBackground: true,
@@ -80,6 +91,29 @@ export default function App() {
             setIsDashboardOpen(true);
         });
     }, []);
+
+
+    // --- THE ASSET SWAPPER ---
+    useEffect(() => {
+        // Ensure engines are booted before trying to load assets
+        if (!visualRef.current || !audioRef.current) return;
+
+        if (activeEntity === 'base') {
+            visualRef.current.loadActor(new BaseFace());
+            audioRef.current.loadSound(screamFile);
+        } else if (activeEntity === 'demon') {
+            visualRef.current.loadActor(new DemonFace());
+            audioRef.current.loadSound(demonScreamFile);
+        } else if (activeEntity === 'cat') {
+            visualRef.current.loadActor(new CatFace());
+            audioRef.current.loadSound(catScreamFile);
+        } else if (activeEntity === 'woman') {
+            visualRef.current.loadActor(new WomanFace());
+            audioRef.current.loadSound(womanScreamFile);
+        }
+        // Cat logic will go here next!
+        
+    }, [activeEntity]);
 
     useEffect(() => {
         if (visualRef.current) {
@@ -204,6 +238,8 @@ export default function App() {
                     onClose={handleCloseDashboard} 
                     settings={settings} 
                     setSettings={setSettings} 
+                    activeEntity={activeEntity}
+                    setActiveEntity={setActiveEntity}   
                 />
             )}
         </div>

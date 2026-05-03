@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Dashboard({ onClose, settings, setSettings }) {
+export default function Dashboard({ onClose, settings, setSettings, activeEntity, setActiveEntity }) {
     
     const handleToggle = (key) => {
         setSettings(prev => ({ ...prev, [key]: !prev[key] }));
@@ -45,11 +45,47 @@ export default function Dashboard({ onClose, settings, setSettings }) {
                     </div>
 
                     <div className="carousel-panel">
-                        <h2 style={{marginTop: 0, marginBottom: '10px', fontSize: '14px'}}>Premium Entities</h2>
+                        {/* UPDATED BUNDLE PRICING HEADER */}
+                        <h2 style={{marginTop: 0, marginBottom: '10px', fontSize: '14px'}}>Premium: The Unhinged Bundle ($2)</h2>
+                        
                         <div className="entity-grid">
-                            <button className="entity-btn">Base Face (Active)</button>
-                            <button className="entity-btn" style={{opacity: 0.5}}>Demon ($1)</button>
-                            <button className="entity-btn" style={{opacity: 0.5}}>Cat ($1)</button>
+                            
+                            {/* Base Face */}
+                            <button 
+                                className="entity-btn" 
+                                style={{ opacity: activeEntity === 'base' ? 1 : 0.5 }}
+                                onClick={() => setActiveEntity('base')}
+                            >
+                                Base Face {activeEntity === 'base' && '(Active)'}
+                            </button>
+
+                            {/* Demon: The Predator */}
+                            <button 
+                                className="entity-btn" 
+                                style={{ opacity: activeEntity === 'demon' ? 1 : 0.5 }}
+                                onClick={() => setActiveEntity('demon')}
+                            >
+                                The Predator {activeEntity === 'demon' && '(Active)'}
+                            </button>
+
+                            {/* Cat: The Glitch */}
+                            <button 
+                                className="entity-btn" 
+                                style={{ opacity: activeEntity === 'cat' ? 1 : 0.5 }}
+                                onClick={() => setActiveEntity('cat')}
+                            >
+                                Glitch Cat {activeEntity === 'cat' && '(Active)'}
+                            </button>
+
+                            {/* Woman: The Toon Banshee */}
+                            <button 
+                                className="entity-btn" 
+                                style={{ opacity: activeEntity === 'woman' ? 1 : 0.5 }}
+                                onClick={() => setActiveEntity('woman')}
+                            >
+                                Toon Banshee {activeEntity === 'woman' && '(Active)'}
+                            </button>
+
                         </div>
                     </div>
                 </div>

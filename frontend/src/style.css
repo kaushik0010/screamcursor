@@ -13,12 +13,8 @@ body {
     justify-content: center;
     align-items: center;
     
-    /* This lets the user grab the widget to move it around */
-    --wails-draggable: drag; 
-    
-    /* TEMPORARY: Just so we know where to shake the mouse! */
-    border: 2px dashed rgba(255, 255, 255, 0.5); 
-    border-radius: 50%; /* Make it a circle */
+    /* 1. SHATTER THE CAGE: Delete the dashed border and force pure transparency */
+    background-color: transparent; 
 }
 
 /* Glassmorphism Dashboard */
@@ -91,7 +87,7 @@ body {
 
 /* --- SHAPE-SHIFTING CANVAS CLASSES --- */
 
-/* State A: Desktop Pet Mode (Fills the 400x400 window) */
+/* State A: Desktop Pet Mode */
 .canvas-pet-mode {
     position: fixed; 
     top: 0; 
@@ -102,6 +98,20 @@ body {
     height: 100vh;
     z-index: 999;
     cursor: grab;
+    
+    /* Smoothly fade in the drag indicator */
+    transition: background 0.3s ease; 
+}
+
+/* 2. THE ELEGANT DRAG UX: 
+   Instead of a permanent ugly box, we show a very soft, fading glow 
+   ONLY when the user hovers their mouse directly over the entity */
+.canvas-pet-mode:hover {
+    background: radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 60%);
+}
+
+.canvas-pet-mode:active {
+    cursor: grabbing;
 }
 
 /* State B: Dashboard Preview Mode (Locks to the top-right box) */

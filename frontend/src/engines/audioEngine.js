@@ -15,13 +15,27 @@ export class AudioEngine {
         this.isPlaying = false;
     }
 
-    // Loads the .mp3 file directly into raw computer memory
+    // --- UPGRADED: DYNAMIC SOUND SWITCHING ---
     async loadSound(filePath) {
         try {
+            // 1. If a sound is currently playing, kill it to free up memory
+            if (this.source && this.isPlaying) {
+                this.source.stop();
+                this.source.disconnect();
+                this.isPlaying = false;
+            }
+
+            // --- THE FIX ---
+            // Instantly delete the old sound from memory before downloading the new one.
+            // This prevents the mouse from triggering the old sound during the split-second download window.
+            this.buffer = null; 
+
+            // 2. Fetch and decode the new .mp3 file
             const response = await fetch(filePath);
             const arrayBuffer = await response.arrayBuffer();
             this.buffer = await this.ctx.decodeAudioData(arrayBuffer);
             console.log(`Loaded sound: ${filePath}`);
+            
         } catch (error) {
             console.error("Failed to load audio:", error);
         }

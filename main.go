@@ -39,9 +39,11 @@ func main() {
 
 		// 3. Transparent OS Settings
 		Windows: &windows.Options{
-			WebviewIsTransparent: true,
-			WindowIsTranslucent:  true,
-			DisableWindowIcon:    true,
+			WebviewIsTransparent:              true,
+			WindowIsTranslucent:               true,         // <--- Put this back to true (keeps the alpha channel)
+			BackdropType:                      windows.None, // <--- NEW: Explicitly bans the Acrylic/Frosted Glass
+			DisableFramelessWindowDecorations: true,         // <--- NEW: Kills the 1px inactive border
+			DisableWindowIcon:                 true,
 		},
 		Mac: &mac.Options{
 			WebviewIsTransparent: true,
