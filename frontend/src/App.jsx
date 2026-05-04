@@ -1,10 +1,14 @@
+// frontend/src/App.jsx:
 import { useEffect, useRef, useState } from 'react';
 import { VisualEngine } from './engines/VisualEngine.js';
 import { AudioEngine } from './engines/AudioEngine.js';
 import { BaseFace } from './actors/BaseFace.js';
 import screamFile from './assets/sounds/scream-man.mp3';
 import { EventsOn, WindowSetSize, WindowCenter, WindowSetPosition, WindowHide, WindowShow } from '../wailsjs/runtime/runtime';
-import { ToggleBoundlessMode } from '../wailsjs/go/main/App.js';
+
+// --- UPDATED WAILS IMPORTS TO INCLUDE PAYWALL LOGIC ---
+import { ToggleBoundlessMode, CheckPremiumStatus, ValidateLicense } from '../wailsjs/go/main/App.js';
+
 import Dashboard from './components/Dashboard';
 // Add these right below your other imports
 import { DemonFace } from './actors/DemonFace.js';
@@ -33,6 +37,10 @@ export default function App() {
 
     const [activeEntity, setActiveEntity] = useState('base'); // 'base', 'demon', or 'cat'
 
+    // --- NEW: PREMIUM STATE & INTERCEPTOR MESSAGING ---
+    const [isPremium, setIsPremium] = useState(false);
+    const [interceptorMessage, setInterceptorMessage] = useState('');
+
     const settingsRef = useRef({
         runInBackground: true,
         muteScream: false,
@@ -55,6 +63,11 @@ export default function App() {
     };
 
     useEffect(() => {
+        // --- NEW: CHECK PREMIUM STATUS ON BOOT ---
+        CheckPremiumStatus().then(status => {
+            setIsPremium(status);
+        }).catch(err => console.error(err));
+
         if (!canvasRef.current || engineInitialized.current) return;
         engineInitialized.current = true;
 
@@ -123,12 +136,44 @@ export default function App() {
         }
     }, [isDashboardOpen]);
 
+    // --- THE STEALTH INTERCEPTOR (Focus Lost) ---
+    // Prevents free users from minimizing the app to bypass the paywall and hear premium screams
+    useEffect(() => {
+        const handleFocusLost = () => {
+            // If they background the app while trying to sneak a premium face
+            if (!isPremium && activeEntity !== 'base') {
+                setActiveEntity('base'); // Instantly revert them to the free tier
+                
+                // Set a cheeky message so when they open it back up, they know they were caught
+                setInterceptorMessage('NICE TRY. PREMIUM BUNDLE REQUIRED FOR BACKGROUND USE.');
+                setTimeout(() => setInterceptorMessage(''), 4000);
+            }
+        };
+
+        // Listen for the OS minimizing the window or clicking away
+        window.addEventListener('blur', handleFocusLost);
+        
+        // Cleanup the listener
+        return () => window.removeEventListener('blur', handleFocusLost);
+    }, [isPremium, activeEntity]);
+
     
-    // --- THE SHAPE SHIFTING LOGIC ---
+    // --- THE SHAPE SHIFTING LOGIC & INTERCEPTOR ---
     
     const handleCloseDashboard = () => {
         // If the window is currently moving, IGNORE THE CLICK entirely.
         if (isTransitioning.current) return; 
+
+        // --- THE INTERCEPTOR (TEASE PAYWALL) ---
+        // If they try to unleash a premium face without owning the bundle, block it!
+        if (!isPremium && activeEntity !== 'base') {
+            setActiveEntity('base');
+            setInterceptorMessage('ERROR: THE UNHINGED BUNDLE IS REQUIRED TO UNLEASH THIS ENTITY.');
+            
+            // Clear the warning text after 4 seconds
+            setTimeout(() => setInterceptorMessage(''), 4000);
+            return; 
+        }
         
         isTransitioning.current = true; // Lock the doors
         setIsDashboardOpen(false);
@@ -163,6 +208,28 @@ export default function App() {
             WindowCenter();
             isTransitioning.current = false; // Unlock
         }, 100);
+    };
+
+    // --- NEW: THE LICENSE VALIDATION HANDLER ---
+    const handleValidateKey = async (key) => {
+        try {
+            const isValid = await ValidateLicense(key);
+            if (isValid) {
+                setIsPremium(true);
+                setInterceptorMessage('LICENSE ACCEPTED. PREMIUM ENTITIES UNLOCKED.');
+                setTimeout(() => setInterceptorMessage(''), 4000);
+                return true;
+            } else {
+                setInterceptorMessage('INVALID LICENSE KEY. ACCESS DENIED.');
+                setTimeout(() => setInterceptorMessage(''), 4000);
+                return false;
+            }
+        } catch (err) {
+            console.error(err);
+            setInterceptorMessage('NETWORK ERROR. FAILED TO VERIFY LICENSE.');
+            setTimeout(() => setInterceptorMessage(''), 4000);
+            return false;
+        }
     };
 
     // --- 2. THE WEB FALLBACK LISTENER (Used when Boundless is OFF) ---
@@ -239,7 +306,10 @@ export default function App() {
                     settings={settings} 
                     setSettings={setSettings} 
                     activeEntity={activeEntity}
-                    setActiveEntity={setActiveEntity}   
+                    setActiveEntity={setActiveEntity}
+                    isPremium={isPremium}
+                    interceptorMessage={interceptorMessage}
+                    onValidateKey={handleValidateKey}   
                 />
             )}
         </div>

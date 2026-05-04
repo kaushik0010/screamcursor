@@ -1,9 +1,32 @@
-import React from 'react';
+// frontend/src/components/Dashboard.jsx:
+import React, { useState } from 'react';
 
-export default function Dashboard({ onClose, settings, setSettings, activeEntity, setActiveEntity }) {
+export default function Dashboard({ 
+    onClose, 
+    settings, 
+    setSettings, 
+    activeEntity, 
+    setActiveEntity,
+    isPremium,
+    interceptorMessage,
+    onValidateKey 
+}) {
     
+    // --- NEW: LOCAL STATE FOR LICENSE INPUT ---
+    const [licenseInput, setLicenseInput] = useState('');
+    const [isVerifying, setIsVerifying] = useState(false);
+
     const handleToggle = (key) => {
         setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    // --- NEW: HANDLE KEY SUBMISSION ---
+    const handleKeySubmit = async () => {
+        if (!licenseInput.trim()) return;
+        setIsVerifying(true);
+        await onValidateKey(licenseInput.trim());
+        setIsVerifying(false);
+        setLicenseInput('');
     };
 
     return (
@@ -36,6 +59,33 @@ export default function Dashboard({ onClose, settings, setSettings, activeEntity
                         <label>Boundless OS Tracking</label>
                         <input type="checkbox" checked={settings.boundlessTracking} onChange={() => handleToggle('boundlessTracking')} />
                     </div>
+
+                    {/* --- NEW: THE PAYWALL UI --- */}
+                    <div className="license-panel" style={{ marginTop: '40px', padding: '15px', background: 'rgba(0,0,0,0.5)', border: isPremium ? '1px solid #4ade80' : '1px solid #ef4444' }}>
+                        <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: isPremium ? '#4ade80' : '#ef4444' }}>
+                            {isPremium ? 'STATUS: PREMIUM UNLOCKED' : 'STATUS: FREE TIER'}
+                        </h3>
+                        
+                        {!isPremium && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <p style={{ margin: 0, fontSize: '12px', color: '#ccc' }}>Paste your license key to unlock the Unhinged Bundle.</p>
+                                <input 
+                                    type="text" 
+                                    placeholder="XXX-YYY-ZZZ" 
+                                    value={licenseInput}
+                                    onChange={(e) => setLicenseInput(e.target.value)}
+                                    style={{ padding: '8px', background: '#222', border: '1px solid #444', color: '#fff' }}
+                                />
+                                <button 
+                                    onClick={handleKeySubmit}
+                                    disabled={isVerifying || !licenseInput.trim()}
+                                    style={{ padding: '8px', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', opacity: isVerifying ? 0.5 : 1 }}
+                                >
+                                    {isVerifying ? 'VERIFYING...' : 'UNLOCK PREMIUM'}
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Right Side: The Shape-Shifter & Carousel */}
@@ -46,7 +96,16 @@ export default function Dashboard({ onClose, settings, setSettings, activeEntity
 
                     <div className="carousel-panel">
                         {/* UPDATED BUNDLE PRICING HEADER */}
-                        <h2 style={{marginTop: 0, marginBottom: '10px', fontSize: '14px'}}>Premium: The Unhinged Bundle ($2)</h2>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                            <h2 style={{ margin: 0, fontSize: '14px' }}>Premium: The Unhinged Bundle ($2)</h2>
+                        </div>
+                        
+                        {/* --- NEW: THE INTERCEPTOR ERROR MESSAGE --- */}
+                        {interceptorMessage && (
+                            <div style={{ padding: '8px', marginBottom: '10px', background: '#ef4444', color: '#fff', fontSize: '12px', fontWeight: 'bold', textAlign: 'center', animation: 'glitch 0.2s infinite' }}>
+                                {interceptorMessage}
+                            </div>
+                        )}
                         
                         <div className="entity-grid">
                             
@@ -62,28 +121,37 @@ export default function Dashboard({ onClose, settings, setSettings, activeEntity
                             {/* Demon: The Predator */}
                             <button 
                                 className="entity-btn" 
-                                style={{ opacity: activeEntity === 'demon' ? 1 : 0.5 }}
+                                style={{ 
+                                    opacity: activeEntity === 'demon' ? 1 : 0.5,
+                                    border: !isPremium ? '1px dashed #ef4444' : ''
+                                }}
                                 onClick={() => setActiveEntity('demon')}
                             >
-                                The Predator {activeEntity === 'demon' && '(Active)'}
+                                {!isPremium && '🔒 '}The Predator {activeEntity === 'demon' && '(Active)'}
                             </button>
 
                             {/* Cat: The Glitch */}
                             <button 
                                 className="entity-btn" 
-                                style={{ opacity: activeEntity === 'cat' ? 1 : 0.5 }}
+                                style={{ 
+                                    opacity: activeEntity === 'cat' ? 1 : 0.5,
+                                    border: !isPremium ? '1px dashed #ef4444' : ''
+                                }}
                                 onClick={() => setActiveEntity('cat')}
                             >
-                                Glitch Cat {activeEntity === 'cat' && '(Active)'}
+                                {!isPremium && '🔒 '}Glitch Cat {activeEntity === 'cat' && '(Active)'}
                             </button>
 
                             {/* Woman: The Toon Banshee */}
                             <button 
                                 className="entity-btn" 
-                                style={{ opacity: activeEntity === 'woman' ? 1 : 0.5 }}
+                                style={{ 
+                                    opacity: activeEntity === 'woman' ? 1 : 0.5,
+                                    border: !isPremium ? '1px dashed #ef4444' : ''
+                                }}
                                 onClick={() => setActiveEntity('woman')}
                             >
-                                Toon Banshee {activeEntity === 'woman' && '(Active)'}
+                                {!isPremium && '🔒 '}Toon Banshee {activeEntity === 'woman' && '(Active)'}
                             </button>
 
                         </div>
