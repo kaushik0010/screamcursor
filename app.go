@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	_ "embed" // <-- Added the underscore! // <-- 1. NEW IMPORT FOR EMBEDDING FILES
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,6 +18,13 @@ import (
 	"github.com/getlantern/systray"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// 2. THE EMBED DIRECTIVE
+// This tells the Go compiler to grab 'tray-icon.ico' from the same folder
+// and inject it directly into the binary as 'iconBytes'.
+//
+//go:embed tray-icon.ico
+var iconBytes []byte
 
 // Dynamically load the native Windows User32 library
 var (
@@ -78,7 +86,8 @@ func (a *App) startup(ctx context.Context) {
 // --- SYSTEM TRAY LOGIC ---
 
 func (a *App) onTrayReady() {
-	systray.SetIcon(getDummyIcon())
+	// 3. PASS THE EMBEDDED BYTES TO THE SYSTEM TRAY
+	systray.SetIcon(iconBytes)
 	systray.SetTitle("Scream Cursor")
 	systray.SetTooltip("Scream Cursor - Running in Background")
 
@@ -111,16 +120,6 @@ func (a *App) onTrayReady() {
 
 func (a *App) onTrayExit() {
 	// Clean up any OS resources here if needed
-}
-
-// A tiny 1x1 transparent PNG to prevent the app from crashing before we add a real icon
-func getDummyIcon() []byte {
-	return []byte{
-		137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82,
-		0, 0, 0, 1, 0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0,
-		0, 0, 11, 73, 68, 65, 84, 8, 215, 99, 96, 0, 2, 0, 0, 5, 0,
-		1, 226, 38, 5, 155, 0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
-	}
 }
 
 // --- BOUNDLESS OS TRACKING LOGIC ---

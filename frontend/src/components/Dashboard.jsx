@@ -12,7 +12,7 @@ export default function Dashboard({
     onValidateKey 
 }) {
     
-    // --- NEW: LOCAL STATE FOR LICENSE INPUT ---
+    // --- LOCAL STATE FOR LICENSE INPUT ---
     const [licenseInput, setLicenseInput] = useState('');
     const [isVerifying, setIsVerifying] = useState(false);
 
@@ -20,7 +20,7 @@ export default function Dashboard({
         setSettings(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
-    // --- NEW: HANDLE KEY SUBMISSION ---
+    // --- HANDLE KEY SUBMISSION ---
     const handleKeySubmit = async () => {
         if (!licenseInput.trim()) return;
         setIsVerifying(true);
@@ -33,7 +33,7 @@ export default function Dashboard({
         <div className="dashboard-overlay">
             <div className="title-bar" style={{ '--wails-drop-target': 'drop' }}>
                 <div className="title-drag-area" style={{ '--wails-draggable': 'drag' }}>
-                    Scream Cursor - Control Panel
+                    SCRM_CRSR // CONTROL_PANEL
                 </div>
                 <button className="close-btn" onClick={onClose}>✕</button>
             </div>
@@ -41,47 +41,60 @@ export default function Dashboard({
             <div className="dashboard-content">
                 {/* Left Side: Settings */}
                 <div className="settings-panel">
-                    <h2 style={{marginTop: 0, marginBottom: '20px', fontSize: '18px'}}>Preferences</h2>
+                    <h2 style={{marginTop: 0, marginBottom: '25px', fontSize: '14px', letterSpacing: '2px', color: '#e5e5e5'}}>PREFERENCES</h2>
                     
                     <div className="setting-row">
                         <label>Run in Background (System Tray)</label>
-                        <input type="checkbox" checked={settings.runInBackground} onChange={() => handleToggle('runInBackground')} />
+                        {/* THE NEW BRUTALIST SLIDING SWITCH */}
+                        <div 
+                            className={`brutalist-switch ${settings.runInBackground ? 'on' : ''}`}
+                            onClick={() => handleToggle('runInBackground')}
+                        />
                     </div>
                     <div className="setting-row">
                         <label>Mute Scream (Face Only)</label>
-                        <input type="checkbox" checked={settings.muteScream} onChange={() => handleToggle('muteScream')} />
+                        <div 
+                            className={`brutalist-switch ${settings.muteScream ? 'on' : ''}`}
+                            onClick={() => handleToggle('muteScream')}
+                        />
                     </div>
                     <div className="setting-row">
                         <label>Invisible Mode (Scream Only)</label>
-                        <input type="checkbox" checked={settings.invisibleMode} onChange={() => handleToggle('invisibleMode')} />
+                        <div 
+                            className={`brutalist-switch ${settings.invisibleMode ? 'on' : ''}`}
+                            onClick={() => handleToggle('invisibleMode')}
+                        />
                     </div>
                     <div className="setting-row">
                         <label>Boundless OS Tracking</label>
-                        <input type="checkbox" checked={settings.boundlessTracking} onChange={() => handleToggle('boundlessTracking')} />
+                        <div 
+                            className={`brutalist-switch ${settings.boundlessTracking ? 'on' : ''}`}
+                            onClick={() => handleToggle('boundlessTracking')}
+                        />
                     </div>
 
-                    {/* --- NEW: THE PAYWALL UI --- */}
-                    <div className="license-panel" style={{ marginTop: '40px', padding: '15px', background: 'rgba(0,0,0,0.5)', border: isPremium ? '1px solid #4ade80' : '1px solid #ef4444' }}>
-                        <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', color: isPremium ? '#4ade80' : '#ef4444' }}>
+                    {/* --- THE PAYWALL UI --- */}
+                    <div className="license-panel" style={{ marginTop: '40px', padding: '15px', background: '#000', border: isPremium ? '1px solid #10b981' : '1px solid #ef4444' }}>
+                        <h3 style={{ margin: '0 0 10px 0', fontSize: '12px', color: isPremium ? '#10b981' : '#ef4444', letterSpacing: '1px' }}>
                             {isPremium ? 'STATUS: PREMIUM UNLOCKED' : 'STATUS: FREE TIER'}
                         </h3>
                         
                         {!isPremium && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                <p style={{ margin: 0, fontSize: '12px', color: '#ccc' }}>Paste your license key to unlock the Unhinged Bundle.</p>
+                                <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>Enter license key to unlock the Unhinged Bundle.</p>
                                 <input 
                                     type="text" 
                                     placeholder="XXX-YYY-ZZZ" 
                                     value={licenseInput}
                                     onChange={(e) => setLicenseInput(e.target.value)}
-                                    style={{ padding: '8px', background: '#222', border: '1px solid #444', color: '#fff' }}
+                                    style={{ padding: '10px', background: '#09090b', border: '1px solid #333', color: '#e5e5e5', fontFamily: '"Space Mono", monospace', outline: 'none' }}
                                 />
                                 <button 
                                     onClick={handleKeySubmit}
                                     disabled={isVerifying || !licenseInput.trim()}
-                                    style={{ padding: '8px', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer', opacity: isVerifying ? 0.5 : 1 }}
+                                    style={{ padding: '10px', background: '#ef4444', color: '#000', border: 'none', cursor: 'pointer', opacity: isVerifying ? 0.5 : 1, fontFamily: '"Space Mono", monospace', fontWeight: 'bold' }}
                                 >
-                                    {isVerifying ? 'VERIFYING...' : 'UNLOCK PREMIUM'}
+                                    {isVerifying ? 'VERIFYING...' : 'UNLOCK_PREMIUM'}
                                 </button>
                             </div>
                         )}
@@ -91,18 +104,17 @@ export default function Dashboard({
                 {/* Right Side: The Shape-Shifter & Carousel */}
                 <div className="right-column">
                     <div className="preview-hole">
-                        Live Preview Area
+                        [ CAM 01 : ENTITY PREVIEW ]
                     </div>
 
                     <div className="carousel-panel">
-                        {/* UPDATED BUNDLE PRICING HEADER */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                            <h2 style={{ margin: 0, fontSize: '14px' }}>Premium: The Unhinged Bundle ($2)</h2>
+                            <h2 style={{ margin: 0, fontSize: '12px', letterSpacing: '1px', color: '#e5e5e5' }}>THE UNHINGED BUNDLE ($2)</h2>
                         </div>
                         
-                        {/* --- NEW: THE INTERCEPTOR ERROR MESSAGE --- */}
+                        {/* --- THE INTERCEPTOR ERROR MESSAGE WITH GLITCH --- */}
                         {interceptorMessage && (
-                            <div style={{ padding: '8px', marginBottom: '10px', background: '#ef4444', color: '#fff', fontSize: '12px', fontWeight: 'bold', textAlign: 'center', animation: 'glitch 0.2s infinite' }}>
+                            <div className="glitch-text" style={{ padding: '10px', marginBottom: '10px', background: '#ef4444', color: '#000', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>
                                 {interceptorMessage}
                             </div>
                         )}
@@ -111,47 +123,34 @@ export default function Dashboard({
                             
                             {/* Base Face */}
                             <button 
-                                className="entity-btn" 
-                                style={{ opacity: activeEntity === 'base' ? 1 : 0.5 }}
+                                className={`entity-btn ${activeEntity === 'base' ? 'active' : ''}`}
                                 onClick={() => setActiveEntity('base')}
                             >
-                                Base Face {activeEntity === 'base' && '(Active)'}
+                                [ BASE_ENTITY ]
                             </button>
 
                             {/* Demon: The Predator */}
                             <button 
-                                className="entity-btn" 
-                                style={{ 
-                                    opacity: activeEntity === 'demon' ? 1 : 0.5,
-                                    border: !isPremium ? '1px dashed #ef4444' : ''
-                                }}
+                                className={`entity-btn ${activeEntity === 'demon' ? 'active' : ''} ${!isPremium ? 'locked' : ''}`}
                                 onClick={() => setActiveEntity('demon')}
                             >
-                                {!isPremium && '🔒 '}The Predator {activeEntity === 'demon' && '(Active)'}
+                                {!isPremium && '🔒 '}[ THE_PREDATOR ]
                             </button>
 
                             {/* Cat: The Glitch */}
                             <button 
-                                className="entity-btn" 
-                                style={{ 
-                                    opacity: activeEntity === 'cat' ? 1 : 0.5,
-                                    border: !isPremium ? '1px dashed #ef4444' : ''
-                                }}
+                                className={`entity-btn ${activeEntity === 'cat' ? 'active' : ''} ${!isPremium ? 'locked' : ''}`}
                                 onClick={() => setActiveEntity('cat')}
                             >
-                                {!isPremium && '🔒 '}Glitch Cat {activeEntity === 'cat' && '(Active)'}
+                                {!isPremium && '🔒 '}[ GLITCH_CAT ]
                             </button>
 
                             {/* Woman: The Toon Banshee */}
                             <button 
-                                className="entity-btn" 
-                                style={{ 
-                                    opacity: activeEntity === 'woman' ? 1 : 0.5,
-                                    border: !isPremium ? '1px dashed #ef4444' : ''
-                                }}
+                                className={`entity-btn ${activeEntity === 'woman' ? 'active' : ''} ${!isPremium ? 'locked' : ''}`}
                                 onClick={() => setActiveEntity('woman')}
                             >
-                                {!isPremium && '🔒 '}Toon Banshee {activeEntity === 'woman' && '(Active)'}
+                                {!isPremium && '🔒 '}[ TOON_BANSHEE ]
                             </button>
 
                         </div>
