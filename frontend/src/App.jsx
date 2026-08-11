@@ -6,7 +6,8 @@ import { BaseFace } from './actors/BaseFace.js';
 import screamFile from './assets/sounds/scream-man.mp3';
 import { EventsOn, WindowSetSize, WindowCenter, WindowSetPosition, WindowHide, WindowShow } from '../wailsjs/runtime/runtime';
 
-import { ToggleBoundlessMode, CheckSuperBundleStatus, ValidateLicense } from '../wailsjs/go/main/App.js';
+// --- PHASE 4: IMPORT NEW SAVE STATE BINDINGS ---
+import { ToggleBoundlessMode, CheckSuperBundleStatus, ValidateLicense, GetHighestPowerLevel, SavePowerLevel } from '../wailsjs/go/main/App.js';
 
 import Dashboard from './components/Dashboard';
 import { DemonFace } from './actors/DemonFace.js';
@@ -15,9 +16,16 @@ import { CatFace } from './actors/CatFace.js';
 import catScreamFile from './assets/sounds/scream-frantic-cat.mp3';
 import { WomanFace } from './actors/WomanFace.js';
 import womanScreamFile from './assets/sounds/scream-woman.mp3';
-import { FighterFace } from './actors/warriors/FighterFace.js';
+import { FighterFace } from './actors/warriors/FighterFace.js'; 
 
-// --- PHASE 3: THE FIGHTER IMPORT ---
+// --- PHASE 4: PROGRESSION THRESHOLDS ---
+const FIGHTER_THRESHOLDS = [
+    { level: 0, form: 'BASE', required: 0 },
+    { level: 1, form: 'GOLD', required: 500 },
+    { level: 2, form: 'DIVINE_RED', required: 1500 },
+    { level: 3, form: 'DIVINE_BLUE', required: 3000 },
+    { level: 4, form: 'AUTONOMOUS', required: 5000 }
+];
 
 export default function App() {
     const canvasRef = useRef(null);
@@ -32,11 +40,19 @@ export default function App() {
     const [isDashboardOpen, setIsDashboardOpen] = useState(true);
     const [activeEntity, setActiveEntity] = useState('base'); 
     
-    // --- PHASE 3: TARGET FORM STATE ---
     const [targetForm, setTargetForm] = useState('BASE');
-
     const [isPremium, setIsPremium] = useState(false);
     const [interceptorMessage, setInterceptorMessage] = useState('');
+
+    // --- PHASE 4: PROGRESSION STATES ---
+    const [unlockedLevel, setUnlockedLevel] = useState(0); 
+    const [powerMeter, setPowerMeter] = useState(0); // Only for UI
+    
+    // Background math refs to prevent React lag
+    const powerRef = useRef(0);
+    const maxUnlockedRef = useRef(0);
+    const lastInteractionTime = useRef(Date.now());
+    const currentRenderedForm = useRef('BASE');
 
     const settingsRef = useRef({
         runInBackground: true,
@@ -60,14 +76,21 @@ export default function App() {
     };
 
     useEffect(() => {
+        // --- PHASE 4: BOOT LOADERS ---
         CheckSuperBundleStatus().then(status => {
             setIsPremium(status);
+            if (status) {
+                GetHighestPowerLevel().then(level => {
+                    maxUnlockedRef.current = level;
+                    setUnlockedLevel(level);
+                }).catch(err => console.error("Save load error:", err));
+            }
         }).catch(err => console.error(err));
 
         if (!canvasRef.current || engineInitialized.current) return;
         engineInitialized.current = true;
 
-        WindowSetSize(900, 500);
+        WindowSetSize(1050, 650);
         WindowCenter();
 
         visualRef.current = new VisualEngine(canvasRef.current);
@@ -92,6 +115,16 @@ export default function App() {
             } else {
                 audioRef.current.setVolume(0);
             }
+
+            // --- PHASE 4: CHARGE POWER METER (Tuned for Difficulty) ---
+            const CHARGE_MIN_SPEED = 2.5; // Requires violent shaking
+            const CHARGE_MULTIPLIER = 0.6; // The grind multiplier
+
+            if (data.speed > CHARGE_MIN_SPEED) {
+                // Add power based on speed. Max power is 5000.
+                powerRef.current = Math.min(5000, powerRef.current + (data.speed * CHARGE_MULTIPLIER));
+                lastInteractionTime.current = Date.now();
+            }
         });
 
         EventsOn('onForceOpenDashboard', () => {
@@ -99,7 +132,57 @@ export default function App() {
         });
     }, []);
 
-    // --- ASSET SWAPPER ---
+    // --- PHASE 4: THE POWER ENGINE LOOP ---
+    // Runs 10 times a second. Handles decay, transformations, and UI syncing.
+    useEffect(() => {
+        const powerInterval = setInterval(() => {
+            if (activeEntity !== 'fighter') return;
+
+            const now = Date.now();
+            const timeSinceLastAction = now - lastInteractionTime.current;
+            
+            // 1. The 2-Minute Hold & Decay (120,000 ms = 2 minutes)
+            if (timeSinceLastAction > 120000) {
+                powerRef.current = Math.max(0, powerRef.current - 5); // Slowly drains power
+            }
+
+            // 2. Determine which form they are currently in based on raw power
+            let achievedLevel = 0;
+            let achievedForm = 'BASE';
+            
+            for (let i = FIGHTER_THRESHOLDS.length - 1; i >= 0; i--) {
+                if (powerRef.current >= FIGHTER_THRESHOLDS[i].required) {
+                    achievedLevel = FIGHTER_THRESHOLDS[i].level;
+                    achievedForm = FIGHTER_THRESHOLDS[i].form;
+                    break;
+                }
+            }
+
+            // 3. Trigger Transformation if form changed
+            if (currentRenderedForm.current !== achievedForm) {
+                currentRenderedForm.current = achievedForm;
+                if (visualRef.current) {
+                    visualRef.current.setTargetForm(achievedForm);
+                }
+            }
+
+            // 4. Check for New High Score (Save to hard drive)
+            if (achievedLevel > maxUnlockedRef.current) {
+                maxUnlockedRef.current = achievedLevel;
+                setUnlockedLevel(achievedLevel); // Updates UI to unlock new buttons
+                SavePowerLevel(achievedLevel);   // Writes to JSON file
+                setInterceptorMessage(`NEW RECORD: LEVEL ${achievedLevel} UNLOCKED!`);
+                setTimeout(() => setInterceptorMessage(''), 4000);
+            }
+
+            // 5. Sync the math to the React UI smoothly
+            setPowerMeter(Math.floor(powerRef.current));
+
+        }, 100); // 100ms interval = lightweight
+
+        return () => clearInterval(powerInterval);
+    }, [activeEntity]);
+
     useEffect(() => {
         if (!visualRef.current || !audioRef.current) return;
 
@@ -116,23 +199,17 @@ export default function App() {
             visualRef.current.loadActor(new WomanFace());
             audioRef.current.loadSound(womanScreamFile);
         } else if (activeEntity === 'fighter') {
-            // --- PHASE 3: LOAD THE FIGHTER ---
             visualRef.current.loadActor(new FighterFace());
             audioRef.current.loadSound(screamFile);
             
-            // Give the engine a tiny 50ms buffer to load the mesh before passing the state
+            // Reset power when picking the fighter
+            powerRef.current = 0; 
+            currentRenderedForm.current = 'BASE';
             setTimeout(() => {
-                if (visualRef.current) visualRef.current.setTargetForm(targetForm);
+                if (visualRef.current) visualRef.current.setTargetForm('BASE');
             }, 50);
         }
     }, [activeEntity]);
-
-    // --- PHASE 3: THE TRANSFORMATION TRIGGER ---
-    useEffect(() => {
-        if (visualRef.current) {
-            visualRef.current.setTargetForm(targetForm);
-        }
-    }, [targetForm]);
 
     useEffect(() => {
         if (visualRef.current) {
@@ -142,7 +219,6 @@ export default function App() {
         }
     }, [isDashboardOpen]);
 
-    // --- PROTECT THE FULL SUPER ROSTER ---
     const premiumEntities = ['fighter', 'prince', 'beast', 'berserker', 'anomaly'];
 
     useEffect(() => {
@@ -194,7 +270,7 @@ export default function App() {
         setIsDashboardOpen(true);
             
         WindowShow(); 
-        WindowSetSize(900, 500); 
+        WindowSetSize(1050, 650); 
             
         setTimeout(() => {
             WindowCenter();
@@ -252,6 +328,15 @@ export default function App() {
                     audioRef.current.setVolume(0);
                 }
             }
+
+            // --- PHASE 4: CHARGE POWER METER (Web Fallback Tuned) ---
+            const CHARGE_MIN_SPEED = 2.5; 
+            const CHARGE_MULTIPLIER = 0.6; 
+
+            if (speed > CHARGE_MIN_SPEED) {
+                powerRef.current = Math.min(5000, powerRef.current + (speed * CHARGE_MULTIPLIER));
+                lastInteractionTime.current = Date.now();
+            }
         }
         lastMouseRef.current = { x: e.screenX, y: e.screenY, time: now };
     };
@@ -290,7 +375,10 @@ export default function App() {
                     interceptorMessage={interceptorMessage}
                     onValidateKey={handleValidateKey}
                     targetForm={targetForm}           
-                    setTargetForm={setTargetForm}     
+                    setTargetForm={setTargetForm}
+                    // --- PASSING NEW STATE TO DASHBOARD ---
+                    powerMeter={powerMeter}
+                    unlockedLevel={unlockedLevel}     
                 />
             )}
         </div>

@@ -6,7 +6,6 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
-	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
@@ -18,15 +17,12 @@ func main() {
 
 	err := wails.Run(&options.App{
 		Title: "Scream Cursor",
+		// PHASE 4: INCREASED BASE DIMENSIONS
+		Width:  1050,
+		Height: 650,
 
-		// 1. Shrink to a floating widget size
-		Width:  900,
-		Height: 500,
-
-		Frameless:   true, // Obliterate OS borders
-		AlwaysOnTop: true, // Float above other windows
-
-		// 2. Ghost Background
+		Frameless:        true,
+		AlwaysOnTop:      true,
 		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
 
 		AssetServer: &assetserver.Options{
@@ -36,18 +32,12 @@ func main() {
 		Bind: []interface{}{
 			app,
 		},
-
-		// 3. Transparent OS Settings
 		Windows: &windows.Options{
 			WebviewIsTransparent:              true,
-			WindowIsTranslucent:               true,         // <--- Put this back to true (keeps the alpha channel)
-			BackdropType:                      windows.None, // <--- NEW: Explicitly bans the Acrylic/Frosted Glass
-			DisableFramelessWindowDecorations: true,         // <--- NEW: Kills the 1px inactive border
+			WindowIsTranslucent:               true,
+			BackdropType:                      windows.None,
+			DisableFramelessWindowDecorations: true,
 			DisableWindowIcon:                 true,
-		},
-		Mac: &mac.Options{
-			WebviewIsTransparent: true,
-			WindowIsTranslucent:  true,
 		},
 	})
 

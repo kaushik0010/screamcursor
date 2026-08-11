@@ -46,7 +46,6 @@ type App struct {
 	lastMouseTime int64
 }
 
-// Dodo Payments API Structs
 type ValidateRequest struct {
 	LicenseKey string `json:"license_key"`
 }
@@ -55,7 +54,6 @@ type ValidateResponse struct {
 	Valid bool `json:"valid"`
 }
 
-// --- PHASE 1 OVERHAUL: NEW SUPER BUNDLE STRUCT ---
 type LicenseData struct {
 	HasSuperBundle    bool   `json:"hasSuperBundle"`
 	LicenseKey        string `json:"licenseKey"`
@@ -87,7 +85,7 @@ func (a *App) onTrayReady() {
 		for {
 			select {
 			case <-mOpen.ClickedCh:
-				runtime.WindowSetSize(a.ctx, 900, 500)
+				runtime.WindowSetSize(a.ctx, 1050, 650)
 				runtime.WindowCenter(a.ctx)
 				runtime.WindowShow(a.ctx)
 				runtime.EventsEmit(a.ctx, "onForceOpenDashboard")
@@ -147,16 +145,12 @@ func (a *App) getSaveFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	appDir := filepath.Join(configDir, "ScreamCursor")
 	if err := os.MkdirAll(appDir, os.ModePerm); err != nil {
 		return "", err
 	}
-
 	return filepath.Join(appDir, "scream_license.json"), nil
 }
-
-// --- PHASE 1 OVERHAUL: NEW VALIDATION & SAVE LOGIC ---
 
 func (a *App) ValidateLicense(key string) (bool, error) {
 	reqBody := ValidateRequest{LicenseKey: key}
@@ -177,14 +171,13 @@ func (a *App) ValidateLicense(key string) (bool, error) {
 	if dodoResp.Valid {
 		savePath, err := a.getSaveFilePath()
 		if err == nil {
-			// Wipe the old save format and strictly apply the Super Bundle
 			licenseData := LicenseData{
 				HasSuperBundle:    true,
 				LicenseKey:        key,
 				HighestPowerLevel: 0, // Everyone starts at Base Form
 			}
 			fileData, _ := json.MarshalIndent(licenseData, "", "  ")
-			os.WriteFile(savePath, fileData, 0644) 
+			os.WriteFile(savePath, fileData, 0644)
 		}
 	}
 
@@ -196,19 +189,14 @@ func (a *App) CheckSuperBundleStatus() bool {
 	if err != nil {
 		return false
 	}
-
 	fileData, err := os.ReadFile(savePath)
 	if err != nil {
-		return false 
-	}
-
-	var licenseData LicenseData
-	if err := json.Unmarshal(fileData, &licenseData); err != nil {
-		// If unmarshalling fails, it means they have the old legacy JSON structure. 
-		// Return false to lock them out of the new Super Bundle features.
 		return false
 	}
-
+	var licenseData LicenseData
+	if err := json.Unmarshal(fileData, &licenseData); err != nil {
+		return false
+	}
 	return licenseData.HasSuperBundle
 }
 
@@ -217,19 +205,33 @@ func (a *App) SavePowerLevel(level int) {
 	if err != nil {
 		return
 	}
-
 	fileData, err := os.ReadFile(savePath)
 	if err != nil {
 		return
 	}
-
 	var licenseData LicenseData
 	if err := json.Unmarshal(fileData, &licenseData); err == nil {
-		// Only overwrite the file if they actually achieved a new high score
 		if level > licenseData.HighestPowerLevel {
 			licenseData.HighestPowerLevel = level
 			newFileData, _ := json.MarshalIndent(licenseData, "", "  ")
 			os.WriteFile(savePath, newFileData, 0644)
 		}
 	}
+}
+
+// --- PHASE 4: NEW BINDING TO READ SAVED PROGRESS ---
+func (a *App) GetHighestPowerLevel() int {
+	savePath, err := a.getSaveFilePath()
+	if err != nil {
+		return 0
+	}
+	fileData, err := os.ReadFile(savePath)
+	if err != nil {
+		return 0
+	}
+	var licenseData LicenseData
+	if err := json.Unmarshal(fileData, &licenseData); err != nil {
+		return 0
+	}
+	return licenseData.HighestPowerLevel
 }
