@@ -47,6 +47,14 @@ export class VisualEngine {
         this.scene.add(this.currentActor.getMesh());
     }
 
+    // --- PHASE 3: THE STATE MACHINE BRIDGE ---
+    setTargetForm(formString) {
+        // Only attempt to change forms if the current 3D actor supports it
+        if (this.currentActor && typeof this.currentActor.setTargetForm === 'function') {
+            this.currentActor.setTargetForm(formString);
+        }
+    }
+
     update(data) {
         if (this.currentActor) {
             this.currentActor.update(data);

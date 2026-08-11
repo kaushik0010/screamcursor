@@ -6,7 +6,6 @@ import { BaseFace } from './actors/BaseFace.js';
 import screamFile from './assets/sounds/scream-man.mp3';
 import { EventsOn, WindowSetSize, WindowCenter, WindowSetPosition, WindowHide, WindowShow } from '../wailsjs/runtime/runtime';
 
-// --- PHASE 1: NEW SUPER BUNDLE BINDINGS ---
 import { ToggleBoundlessMode, CheckSuperBundleStatus, ValidateLicense } from '../wailsjs/go/main/App.js';
 
 import Dashboard from './components/Dashboard';
@@ -16,6 +15,9 @@ import { CatFace } from './actors/CatFace.js';
 import catScreamFile from './assets/sounds/scream-frantic-cat.mp3';
 import { WomanFace } from './actors/WomanFace.js';
 import womanScreamFile from './assets/sounds/scream-woman.mp3';
+import { FighterFace } from './actors/warriors/FighterFace.js';
+
+// --- PHASE 3: THE FIGHTER IMPORT ---
 
 export default function App() {
     const canvasRef = useRef(null);
@@ -26,10 +28,13 @@ export default function App() {
 
     const lastMouseRef = useRef({ x: 0, y: 0, time: performance.now() });
     const isTransitioning = useRef(false);
+    
     const [isDashboardOpen, setIsDashboardOpen] = useState(true);
     const [activeEntity, setActiveEntity] = useState('base'); 
+    
+    // --- PHASE 3: TARGET FORM STATE ---
+    const [targetForm, setTargetForm] = useState('BASE');
 
-    // Premium State (Now maps to Super Bundle)
     const [isPremium, setIsPremium] = useState(false);
     const [interceptorMessage, setInterceptorMessage] = useState('');
 
@@ -55,7 +60,6 @@ export default function App() {
     };
 
     useEffect(() => {
-        // --- PHASE 1: CHECK NEW SUPER BUNDLE STATUS ON BOOT ---
         CheckSuperBundleStatus().then(status => {
             setIsPremium(status);
         }).catch(err => console.error(err));
@@ -112,11 +116,23 @@ export default function App() {
             visualRef.current.loadActor(new WomanFace());
             audioRef.current.loadSound(womanScreamFile);
         } else if (activeEntity === 'fighter') {
-            // FALLBACK FOR PHASE 1: Load base face temporarily until we build the 3D Fighter
-            visualRef.current.loadActor(new BaseFace());
+            // --- PHASE 3: LOAD THE FIGHTER ---
+            visualRef.current.loadActor(new FighterFace());
             audioRef.current.loadSound(screamFile);
+            
+            // Give the engine a tiny 50ms buffer to load the mesh before passing the state
+            setTimeout(() => {
+                if (visualRef.current) visualRef.current.setTargetForm(targetForm);
+            }, 50);
         }
     }, [activeEntity]);
+
+    // --- PHASE 3: THE TRANSFORMATION TRIGGER ---
+    useEffect(() => {
+        if (visualRef.current) {
+            visualRef.current.setTargetForm(targetForm);
+        }
+    }, [targetForm]);
 
     useEffect(() => {
         if (visualRef.current) {
@@ -126,11 +142,11 @@ export default function App() {
         }
     }, [isDashboardOpen]);
 
-    // --- PHASE 1: UPDATED STEALTH INTERCEPTOR ---
+    // --- PROTECT THE FULL SUPER ROSTER ---
+    const premiumEntities = ['fighter', 'prince', 'beast', 'berserker', 'anomaly'];
+
     useEffect(() => {
         const handleFocusLost = () => {
-            const premiumEntities = ['fighter']; // Add 'prince', 'beast' here later
-            
             if (!isPremium && premiumEntities.includes(activeEntity)) {
                 setActiveEntity('base'); 
                 setInterceptorMessage('NICE TRY. SUPER FIGHTER BUNDLE REQUIRED FOR BACKGROUND USE.');
@@ -142,14 +158,9 @@ export default function App() {
         return () => window.removeEventListener('blur', handleFocusLost);
     }, [isPremium, activeEntity]);
 
-    
-    // --- PHASE 1: UPDATED SHAPE SHIFTING INTERCEPTOR ---
     const handleCloseDashboard = () => {
         if (isTransitioning.current) return; 
 
-        const premiumEntities = ['fighter']; // Add 'prince', 'beast' here later
-        
-        // If they try to unleash a Super Fighter entity without owning the bundle, block it!
         if (!isPremium && premiumEntities.includes(activeEntity)) {
             setActiveEntity('base');
             setInterceptorMessage('ERROR: THE SUPER FIGHTER BUNDLE IS REQUIRED TO UNLEASH THIS ENTITY.');
@@ -277,7 +288,9 @@ export default function App() {
                     setActiveEntity={setActiveEntity}
                     isPremium={isPremium}
                     interceptorMessage={interceptorMessage}
-                    onValidateKey={handleValidateKey}   
+                    onValidateKey={handleValidateKey}
+                    targetForm={targetForm}           
+                    setTargetForm={setTargetForm}     
                 />
             )}
         </div>
