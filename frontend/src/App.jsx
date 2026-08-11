@@ -6,17 +6,14 @@ import { BaseFace } from './actors/BaseFace.js';
 import screamFile from './assets/sounds/scream-man.mp3';
 import { EventsOn, WindowSetSize, WindowCenter, WindowSetPosition, WindowHide, WindowShow } from '../wailsjs/runtime/runtime';
 
-// --- UPDATED WAILS IMPORTS TO INCLUDE PAYWALL LOGIC ---
-import { ToggleBoundlessMode, CheckPremiumStatus, ValidateLicense } from '../wailsjs/go/main/App.js';
+// --- PHASE 1: NEW SUPER BUNDLE BINDINGS ---
+import { ToggleBoundlessMode, CheckSuperBundleStatus, ValidateLicense } from '../wailsjs/go/main/App.js';
 
 import Dashboard from './components/Dashboard';
-// Add these right below your other imports
 import { DemonFace } from './actors/DemonFace.js';
 import demonScreamFile from './assets/sounds/scream-demon.mp3'; 
-
 import { CatFace } from './actors/CatFace.js';
 import catScreamFile from './assets/sounds/scream-frantic-cat.mp3';
-
 import { WomanFace } from './actors/WomanFace.js';
 import womanScreamFile from './assets/sounds/scream-woman.mp3';
 
@@ -27,17 +24,12 @@ export default function App() {
     const audioRef = useRef(null);
     const visualRef = useRef(null);
 
-    // --- NEW: PHYSICS REFERENCE FOR WEB FALLBACK ---
     const lastMouseRef = useRef({ x: 0, y: 0, time: performance.now() });
-
-    // --- NEW: INTERACTION LOCK TO BLOCK SPAM CLICKS ---
     const isTransitioning = useRef(false);
-
     const [isDashboardOpen, setIsDashboardOpen] = useState(true);
+    const [activeEntity, setActiveEntity] = useState('base'); 
 
-    const [activeEntity, setActiveEntity] = useState('base'); // 'base', 'demon', or 'cat'
-
-    // --- NEW: PREMIUM STATE & INTERCEPTOR MESSAGING ---
+    // Premium State (Now maps to Super Bundle)
     const [isPremium, setIsPremium] = useState(false);
     const [interceptorMessage, setInterceptorMessage] = useState('');
 
@@ -63,8 +55,8 @@ export default function App() {
     };
 
     useEffect(() => {
-        // --- NEW: CHECK PREMIUM STATUS ON BOOT ---
-        CheckPremiumStatus().then(status => {
+        // --- PHASE 1: CHECK NEW SUPER BUNDLE STATUS ON BOOT ---
+        CheckSuperBundleStatus().then(status => {
             setIsPremium(status);
         }).catch(err => console.error(err));
 
@@ -83,7 +75,6 @@ export default function App() {
         const MIN_SPEED = 0.5;
         const MAX_SPEED = 5.0;
 
-        // 1. THE NATIVE GO LISTENER (Used when Boundless is ON)
         EventsOn('onGlobalMouseUpdate', (data) => {
             const currentSettings = settingsRef.current;
             if (!currentSettings.invisibleMode) {
@@ -99,16 +90,13 @@ export default function App() {
             }
         });
 
-        // 2. THE SYSTEM TRAY RESCUE LISTENER
         EventsOn('onForceOpenDashboard', () => {
             setIsDashboardOpen(true);
         });
     }, []);
 
-
-    // --- THE ASSET SWAPPER ---
+    // --- ASSET SWAPPER ---
     useEffect(() => {
-        // Ensure engines are booted before trying to load assets
         if (!visualRef.current || !audioRef.current) return;
 
         if (activeEntity === 'base') {
@@ -123,9 +111,11 @@ export default function App() {
         } else if (activeEntity === 'woman') {
             visualRef.current.loadActor(new WomanFace());
             audioRef.current.loadSound(womanScreamFile);
+        } else if (activeEntity === 'fighter') {
+            // FALLBACK FOR PHASE 1: Load base face temporarily until we build the 3D Fighter
+            visualRef.current.loadActor(new BaseFace());
+            audioRef.current.loadSound(screamFile);
         }
-        // Cat logic will go here next!
-        
     }, [activeEntity]);
 
     useEffect(() => {
@@ -136,51 +126,43 @@ export default function App() {
         }
     }, [isDashboardOpen]);
 
-    // --- THE STEALTH INTERCEPTOR (Focus Lost) ---
-    // Prevents free users from minimizing the app to bypass the paywall and hear premium screams
+    // --- PHASE 1: UPDATED STEALTH INTERCEPTOR ---
     useEffect(() => {
         const handleFocusLost = () => {
-            // If they background the app while trying to sneak a premium face
-            if (!isPremium && activeEntity !== 'base') {
-                setActiveEntity('base'); // Instantly revert them to the free tier
-                
-                // Set a cheeky message so when they open it back up, they know they were caught
-                setInterceptorMessage('NICE TRY. PREMIUM BUNDLE REQUIRED FOR BACKGROUND USE.');
+            const premiumEntities = ['fighter']; // Add 'prince', 'beast' here later
+            
+            if (!isPremium && premiumEntities.includes(activeEntity)) {
+                setActiveEntity('base'); 
+                setInterceptorMessage('NICE TRY. SUPER FIGHTER BUNDLE REQUIRED FOR BACKGROUND USE.');
                 setTimeout(() => setInterceptorMessage(''), 4000);
             }
         };
 
-        // Listen for the OS minimizing the window or clicking away
         window.addEventListener('blur', handleFocusLost);
-        
-        // Cleanup the listener
         return () => window.removeEventListener('blur', handleFocusLost);
     }, [isPremium, activeEntity]);
 
     
-    // --- THE SHAPE SHIFTING LOGIC & INTERCEPTOR ---
-    
+    // --- PHASE 1: UPDATED SHAPE SHIFTING INTERCEPTOR ---
     const handleCloseDashboard = () => {
-        // If the window is currently moving, IGNORE THE CLICK entirely.
         if (isTransitioning.current) return; 
 
-        // --- THE INTERCEPTOR (TEASE PAYWALL) ---
-        // If they try to unleash a premium face without owning the bundle, block it!
-        if (!isPremium && activeEntity !== 'base') {
+        const premiumEntities = ['fighter']; // Add 'prince', 'beast' here later
+        
+        // If they try to unleash a Super Fighter entity without owning the bundle, block it!
+        if (!isPremium && premiumEntities.includes(activeEntity)) {
             setActiveEntity('base');
-            setInterceptorMessage('ERROR: THE UNHINGED BUNDLE IS REQUIRED TO UNLEASH THIS ENTITY.');
-            
-            // Clear the warning text after 4 seconds
+            setInterceptorMessage('ERROR: THE SUPER FIGHTER BUNDLE IS REQUIRED TO UNLEASH THIS ENTITY.');
             setTimeout(() => setInterceptorMessage(''), 4000);
             return; 
         }
         
-        isTransitioning.current = true; // Lock the doors
+        isTransitioning.current = true; 
         setIsDashboardOpen(false);
 
         if (settingsRef.current.invisibleMode) {
             WindowHide();
-            isTransitioning.current = false; // Unlock
+            isTransitioning.current = false; 
             return; 
         }
 
@@ -190,15 +172,14 @@ export default function App() {
             const screenWidth = window.screen.availWidth;
             const screenHeight = window.screen.availHeight;
             WindowSetPosition(screenWidth - 420, screenHeight - 420);
-            isTransitioning.current = false; // Unlock
+            isTransitioning.current = false; 
         }, 100);
     };
 
     const handleOpenDashboard = () => {
-        // If it's already open, or currently moving, IGNORE THE CLICK.
         if (isTransitioning.current || isDashboardOpen) return;
         
-        isTransitioning.current = true; // Lock the doors
+        isTransitioning.current = true; 
         setIsDashboardOpen(true);
             
         WindowShow(); 
@@ -206,17 +187,16 @@ export default function App() {
             
         setTimeout(() => {
             WindowCenter();
-            isTransitioning.current = false; // Unlock
+            isTransitioning.current = false; 
         }, 100);
     };
 
-    // --- NEW: THE LICENSE VALIDATION HANDLER ---
     const handleValidateKey = async (key) => {
         try {
             const isValid = await ValidateLicense(key);
             if (isValid) {
                 setIsPremium(true);
-                setInterceptorMessage('LICENSE ACCEPTED. PREMIUM ENTITIES UNLOCKED.');
+                setInterceptorMessage('LICENSE ACCEPTED. SUPER FIGHTER ROSTER UNLOCKED.');
                 setTimeout(() => setInterceptorMessage(''), 4000);
                 return true;
             } else {
@@ -232,28 +212,20 @@ export default function App() {
         }
     };
 
-    // --- 2. THE WEB FALLBACK LISTENER (Used when Boundless is OFF) ---
     const handleWebMouseMove = (e) => {
         const currentSettings = settingsRef.current;
-        
-        // If Go is handling tracking, completely ignore this web event
         if (currentSettings.boundlessTracking) return;
 
         const now = performance.now();
         const dt = now - lastMouseRef.current.time;
 
         if (dt > 0) {
-            // Calculate Distance
             const dx = e.screenX - lastMouseRef.current.x;
             const dy = e.screenY - lastMouseRef.current.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
-
-            // Calculate Speed (tuned multiplier to match Go backend feel)
             const speed = (distance / dt) * 2.5;
-
             const data = { x: e.clientX, y: e.clientY, speed: speed };
 
-            // Update Engines manually
             if (!currentSettings.invisibleMode && visualRef.current) {
                 visualRef.current.update(data);
             }
@@ -270,13 +242,9 @@ export default function App() {
                 }
             }
         }
-
-        // Save state for the next frame
         lastMouseRef.current = { x: e.screenX, y: e.screenY, time: now };
     };
 
-    // --- EMERGENCY MUTE FOR WEB FALLBACK ---
-    // If the mouse leaves the window entirely, kill the audio instantly
     const handleWebMouseLeave = () => {
         if (!settingsRef.current.boundlessTracking && audioRef.current) {
             audioRef.current.setVolume(0);

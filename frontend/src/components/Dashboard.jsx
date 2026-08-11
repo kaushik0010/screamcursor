@@ -1,4 +1,4 @@
-// frontend/src/components/Dashboard.jsx:
+// frontend/src/components/Dashboard.jsx
 import React, { useState } from 'react';
 
 export default function Dashboard({ 
@@ -45,7 +45,6 @@ export default function Dashboard({
                     
                     <div className="setting-row">
                         <label>Run in Background (System Tray)</label>
-                        {/* THE NEW BRUTALIST SLIDING SWITCH */}
                         <div 
                             className={`brutalist-switch ${settings.runInBackground ? 'on' : ''}`}
                             onClick={() => handleToggle('runInBackground')}
@@ -81,7 +80,7 @@ export default function Dashboard({
                         
                         {!isPremium && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>Enter license key to unlock the Unhinged Bundle.</p>
+                                <p style={{ margin: 0, fontSize: '11px', color: '#888' }}>Enter license key to unlock the Super Fighter Bundle.</p>
                                 <input 
                                     type="text" 
                                     placeholder="XXX-YYY-ZZZ" 
@@ -109,7 +108,7 @@ export default function Dashboard({
 
                     <div className="carousel-panel">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                            <h2 style={{ margin: 0, fontSize: '12px', letterSpacing: '1px', color: '#e5e5e5' }}>THE UNHINGED BUNDLE ($2)</h2>
+                            <h2 style={{ margin: 0, fontSize: '12px', letterSpacing: '1px', color: '#e5e5e5' }}>AVAILABLE ENTITIES</h2>
                         </div>
                         
                         {/* --- THE INTERCEPTOR ERROR MESSAGE WITH GLITCH --- */}
@@ -129,28 +128,37 @@ export default function Dashboard({
                                 [ BASE_ENTITY ]
                             </button>
 
-                            {/* Demon: The Predator */}
+                            {/* Demon: The Predator (NOW FREE) */}
                             <button 
-                                className={`entity-btn ${activeEntity === 'demon' ? 'active' : ''} ${!isPremium ? 'locked' : ''}`}
+                                className={`entity-btn ${activeEntity === 'demon' ? 'active' : ''}`}
                                 onClick={() => setActiveEntity('demon')}
                             >
-                                {!isPremium && '🔒 '}[ THE_PREDATOR ]
+                                [ THE_PREDATOR ]
                             </button>
 
-                            {/* Cat: The Glitch */}
+                            {/* Cat: The Glitch (NOW FREE) */}
                             <button 
-                                className={`entity-btn ${activeEntity === 'cat' ? 'active' : ''} ${!isPremium ? 'locked' : ''}`}
+                                className={`entity-btn ${activeEntity === 'cat' ? 'active' : ''}`}
                                 onClick={() => setActiveEntity('cat')}
                             >
-                                {!isPremium && '🔒 '}[ GLITCH_CAT ]
+                                [ GLITCH_CAT ]
                             </button>
 
-                            {/* Woman: The Toon Banshee */}
+                            {/* Woman: The Toon Banshee (NOW FREE) */}
                             <button 
-                                className={`entity-btn ${activeEntity === 'woman' ? 'active' : ''} ${!isPremium ? 'locked' : ''}`}
+                                className={`entity-btn ${activeEntity === 'woman' ? 'active' : ''}`}
                                 onClick={() => setActiveEntity('woman')}
                             >
-                                {!isPremium && '🔒 '}[ TOON_BANSHEE ]
+                                [ TOON_BANSHEE ]
+                            </button>
+
+                            {/* NEW: The Fighter (PREMIUM LOCKED) */}
+                            <button 
+                                className={`entity-btn ${activeEntity === 'fighter' ? 'active' : ''} ${!isPremium ? 'locked' : ''}`}
+                                onClick={() => setActiveEntity('fighter')}
+                                style={isPremium ? { borderColor: '#eab308', color: activeEntity === 'fighter' ? '#000' : '#eab308' } : {}}
+                            >
+                                {!isPremium && '🔒 '}[ THE_FIGHTER ]
                             </button>
 
                         </div>
