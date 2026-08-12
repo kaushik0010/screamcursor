@@ -6,7 +6,6 @@ import { BaseFace } from './actors/BaseFace.js';
 import screamFile from './assets/sounds/scream-man.mp3';
 import { EventsOn, WindowSetSize, WindowCenter, WindowSetPosition, WindowHide, WindowShow } from '../wailsjs/runtime/runtime';
 
-// --- PHASE 4: IMPORT NEW SAVE STATE BINDINGS ---
 import { ToggleBoundlessMode, CheckSuperBundleStatus, ValidateLicense, GetHighestPowerLevel, SavePowerLevel } from '../wailsjs/go/main/App.js';
 
 import Dashboard from './components/Dashboard';
@@ -16,9 +15,8 @@ import { CatFace } from './actors/CatFace.js';
 import catScreamFile from './assets/sounds/scream-frantic-cat.mp3';
 import { WomanFace } from './actors/WomanFace.js';
 import womanScreamFile from './assets/sounds/scream-woman.mp3';
-import { FighterFace } from './actors/warriors/FighterFace.js'; 
+import { FighterFace } from './actors/warriors/FighterFace.js';
 
-// --- PHASE 4: PROGRESSION THRESHOLDS ---
 const FIGHTER_THRESHOLDS = [
     { level: 0, form: 'BASE', required: 0 },
     { level: 1, form: 'GOLD', required: 500 },
@@ -44,11 +42,9 @@ export default function App() {
     const [isPremium, setIsPremium] = useState(false);
     const [interceptorMessage, setInterceptorMessage] = useState('');
 
-    // --- PHASE 4: PROGRESSION STATES ---
     const [unlockedLevel, setUnlockedLevel] = useState(0); 
-    const [powerMeter, setPowerMeter] = useState(0); // Only for UI
+    const [powerMeter, setPowerMeter] = useState(0);
     
-    // Background math refs to prevent React lag
     const powerRef = useRef(0);
     const maxUnlockedRef = useRef(0);
     const lastInteractionTime = useRef(Date.now());
@@ -58,7 +54,8 @@ export default function App() {
         runInBackground: true,
         muteScream: false,
         invisibleMode: false,
-        boundlessTracking: true
+        boundlessTracking: true,
+        enableMicInput: false // PHASE 5: Mic defaults to false
     });
 
     const [settings, setSettingsState] = useState(settingsRef.current);
@@ -75,8 +72,28 @@ export default function App() {
         });
     };
 
+    // --- PHASE 5: THE MIC PERMISSION HOOK ---
     useEffect(() => {
-        // --- PHASE 4: BOOT LOADERS ---
+        if (!audioRef.current) return;
+
+        if (settings.enableMicInput) {
+            audioRef.current.enableMic().then(success => {
+                if (!success) {
+                    setInterceptorMessage('MIC ACCESS DENIED BY OS OR BROWSER.');
+                    setTimeout(() => setInterceptorMessage(''), 4000);
+                    // Force the setting back off if permission fails
+                    setSettings(prev => ({ ...prev, enableMicInput: false }));
+                } else {
+                    setInterceptorMessage('MIC ENABLED. SCREAM TO CHARGE KI.');
+                    setTimeout(() => setInterceptorMessage(''), 4000);
+                }
+            });
+        } else {
+            audioRef.current.disableMic();
+        }
+    }, [settings.enableMicInput]);
+
+    useEffect(() => {
         CheckSuperBundleStatus().then(status => {
             setIsPremium(status);
             if (status) {
@@ -116,12 +133,11 @@ export default function App() {
                 audioRef.current.setVolume(0);
             }
 
-            // --- PHASE 4: CHARGE POWER METER (Tuned for Difficulty) ---
-            const CHARGE_MIN_SPEED = 2.5; // Requires violent shaking
-            const CHARGE_MULTIPLIER = 0.6; // The grind multiplier
+            const CHARGE_MIN_SPEED = 2.5; 
+            const CHARGE_MULTIPLIER = 0.6; 
 
-            if (data.speed > CHARGE_MIN_SPEED) {
-                // Add power based on speed. Max power is 5000.
+            // FIX: Only allow mouse to charge Ki if the mic is DISABLED
+            if (!currentSettings.enableMicInput && data.speed > CHARGE_MIN_SPEED) {
                 powerRef.current = Math.min(5000, powerRef.current + (data.speed * CHARGE_MULTIPLIER));
                 lastInteractionTime.current = Date.now();
             }
@@ -132,8 +148,7 @@ export default function App() {
         });
     }, []);
 
-    // --- PHASE 4: THE POWER ENGINE LOOP ---
-    // Runs 10 times a second. Handles decay, transformations, and UI syncing.
+    // --- THE POWER ENGINE LOOP ---
     useEffect(() => {
         const powerInterval = setInterval(() => {
             if (activeEntity !== 'fighter') return;
@@ -141,12 +156,33 @@ export default function App() {
             const now = Date.now();
             const timeSinceLastAction = now - lastInteractionTime.current;
             
-            // 1. The 2-Minute Hold & Decay (120,000 ms = 2 minutes)
+            // 1. Hold & Decay
             if (timeSinceLastAction > 120000) {
-                powerRef.current = Math.max(0, powerRef.current - 5); // Slowly drains power
+                powerRef.current = Math.max(0, powerRef.current - 5); 
             }
 
-            // 2. Determine which form they are currently in based on raw power
+            // --- PHASE 5: MICROPHONE INJECTION (DSP REFINED) ---
+            if (audioRef.current && settingsRef.current.enableMicInput) {
+                const micData = audioRef.current.getScreamData();
+                
+                // Triggers ONLY if volume crosses 35% AND high-frequency density ratio passes threshold
+                if (micData.isScreaming) {
+                    // Inject power directly based on vocal strain intensity
+                    powerRef.current = Math.min(5000, powerRef.current + (micData.intensity * 55));
+                    lastInteractionTime.current = Date.now();
+                    
+                    // Drive 3D model mouth deformation
+                    if (visualRef.current) {
+                        visualRef.current.update({
+                            x: lastMouseRef.current.x,
+                            y: lastMouseRef.current.y,
+                            speed: micData.intensity * 5.0 
+                        });
+                    }
+                }
+            }
+
+            // 2. Determine current form
             let achievedLevel = 0;
             let achievedForm = 'BASE';
             
@@ -158,7 +194,7 @@ export default function App() {
                 }
             }
 
-            // 3. Trigger Transformation if form changed
+            // 3. Trigger Transformation
             if (currentRenderedForm.current !== achievedForm) {
                 currentRenderedForm.current = achievedForm;
                 if (visualRef.current) {
@@ -166,19 +202,19 @@ export default function App() {
                 }
             }
 
-            // 4. Check for New High Score (Save to hard drive)
+            // 4. Save New High Score
             if (achievedLevel > maxUnlockedRef.current) {
                 maxUnlockedRef.current = achievedLevel;
-                setUnlockedLevel(achievedLevel); // Updates UI to unlock new buttons
-                SavePowerLevel(achievedLevel);   // Writes to JSON file
+                setUnlockedLevel(achievedLevel); 
+                SavePowerLevel(achievedLevel);   
                 setInterceptorMessage(`NEW RECORD: LEVEL ${achievedLevel} UNLOCKED!`);
                 setTimeout(() => setInterceptorMessage(''), 4000);
             }
 
-            // 5. Sync the math to the React UI smoothly
+            // 5. Sync UI
             setPowerMeter(Math.floor(powerRef.current));
 
-        }, 100); // 100ms interval = lightweight
+        }, 100);
 
         return () => clearInterval(powerInterval);
     }, [activeEntity]);
@@ -202,7 +238,6 @@ export default function App() {
             visualRef.current.loadActor(new FighterFace());
             audioRef.current.loadSound(screamFile);
             
-            // Reset power when picking the fighter
             powerRef.current = 0; 
             currentRenderedForm.current = 'BASE';
             setTimeout(() => {
@@ -329,16 +364,17 @@ export default function App() {
                 }
             }
 
-            // --- PHASE 4: CHARGE POWER METER (Web Fallback Tuned) ---
             const CHARGE_MIN_SPEED = 2.5; 
             const CHARGE_MULTIPLIER = 0.6; 
 
-            if (speed > CHARGE_MIN_SPEED) {
+            // FIX: Only allow mouse to charge Ki if the mic is DISABLED
+            if (!currentSettings.enableMicInput && speed > CHARGE_MIN_SPEED) {
                 powerRef.current = Math.min(5000, powerRef.current + (speed * CHARGE_MULTIPLIER));
                 lastInteractionTime.current = Date.now();
             }
         }
-        lastMouseRef.current = { x: e.screenX, y: e.screenY, time: now };
+        
+        lastMouseRef.current = { x: e.clientX, y: e.clientY, time: now };
     };
 
     const handleWebMouseLeave = () => {
@@ -376,7 +412,6 @@ export default function App() {
                     onValidateKey={handleValidateKey}
                     targetForm={targetForm}           
                     setTargetForm={setTargetForm}
-                    // --- PASSING NEW STATE TO DASHBOARD ---
                     powerMeter={powerMeter}
                     unlockedLevel={unlockedLevel}     
                 />

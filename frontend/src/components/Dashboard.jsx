@@ -99,6 +99,12 @@ export default function Dashboard({
                         <div className={`brutalist-switch ${settings.boundlessTracking ? 'on' : ''}`} onClick={() => handleToggle('boundlessTracking')} />
                     </div>
 
+                    {/* --- PHASE 5: THE MICROPHONE TOGGLE --- */}
+                    <div className="setting-row" style={{ marginTop: '15px', borderTop: '1px solid #333', paddingTop: '15px' }}>
+                        <label style={{ color: '#eab308', fontWeight: 'bold' }}>Enable Mic (Scream to Power Up)</label>
+                        <div className={`brutalist-switch ${settings.enableMicInput ? 'on' : ''}`} onClick={() => handleToggle('enableMicInput')} />
+                    </div>
+
                     <div className="license-panel" style={{ marginTop: '40px', padding: '15px', background: '#000', border: isPremium ? '1px solid #10b981' : '1px solid #ef4444' }}>
                         <h3 style={{ margin: '0 0 10px 0', fontSize: '12px', color: isPremium ? '#10b981' : '#ef4444', letterSpacing: '1px' }}>
                             {isPremium ? 'STATUS: PREMIUM UNLOCKED' : 'STATUS: FREE TIER'}
@@ -132,7 +138,6 @@ export default function Dashboard({
                         [ CAM 01 : ENTITY_STREAM ]
                     </div>
 
-                    {/* --- THE FIX: CONDITIONALLY RENDER THE POWER METER --- */}
                     {SUPER_ENTITIES.includes(activeEntity) && (
                         <div style={{ flexShrink: 0, marginBottom: '20px', padding: '10px', background: '#111', border: '2px solid #333' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
