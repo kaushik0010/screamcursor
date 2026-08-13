@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,13 +17,17 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/denisbrodbeck/machineid" // Hardware ID package
 	"github.com/getlantern/systray"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
-	"golang.org/x/sys/windows/registry" // Added for Windows Registry access
+	"golang.org/x/sys/windows/registry"
 )
 
 //go:embed tray-icon.ico
 var iconBytes []byte
+
+// A secret salt to make the hash uncrackable even if they know their HWID
+const appSecretSalt = "SCRM_CRSR_SUPER_BUNDLE_SALT_9982"
 
 var (
 	moduser32  = syscall.NewLazyDLL("user32.dll")
@@ -55,8 +61,9 @@ type ValidateResponse struct {
 	Valid bool `json:"valid"`
 }
 
+// PHASE 7: UPDATED LICENSE DATA STRUCT
 type LicenseData struct {
-	HasSuperBundle    bool   `json:"hasSuperBundle"`
+	Signature         string `json:"signature"` // Replaces the easily hacked boolean
 	LicenseKey        string `json:"licenseKey"`
 	HighestPowerLevel int    `json:"highestPowerLevel"`
 }
@@ -141,25 +148,20 @@ func (a *App) ToggleBoundlessMode(enabled bool) {
 	a.isBoundless = enabled
 }
 
-// --- PHASE 6: AUTO-START WINDOWS REGISTRY INJECTION ---
 func (a *App) ToggleAutoStart(enabled bool) error {
-	// 1. Get the exact path to this compiled .exe
 	exePath, err := os.Executable()
 	if err != nil {
 		return err
 	}
 
-	// 2. Format the command with our secret stealth flag
 	runCmd := fmt.Sprintf(`"%s" --background-boot`, exePath)
 
-	// 3. Open the Windows Run registry key
 	key, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Run`, registry.ALL_ACCESS)
 	if err != nil {
 		return err
 	}
 	defer key.Close()
 
-	// 4. Inject or Remove the key based on the toggle
 	if enabled {
 		return key.SetStringValue("ScreamCursor", runCmd)
 	} else {
@@ -183,6 +185,20 @@ func (a *App) getSaveFilePath() (string, error) {
 	return filepath.Join(appDir, "scream_license.json"), nil
 }
 
+// --- PHASE 7: CRYPTOGRAPHIC HARDWARE BINDING ---
+// Generates a SHA-256 hash using the physical machine ID, the license key, and a secret salt
+func (a *App) generateHardwareSignature(licenseKey string) (string, error) {
+	hwid, err := machineid.ID() // Grabs the unique motherboard/OS UUID
+	if err != nil {
+		return "", err
+	}
+
+	rawString := hwid + licenseKey + appSecretSalt
+	hash := sha256.Sum256([]byte(rawString))
+
+	return hex.EncodeToString(hash[:]), nil
+}
+
 func (a *App) ValidateLicense(key string) (bool, error) {
 	reqBody := ValidateRequest{LicenseKey: key}
 	jsonBody, _ := json.Marshal(reqBody)
@@ -202,13 +218,17 @@ func (a *App) ValidateLicense(key string) (bool, error) {
 	if dodoResp.Valid {
 		savePath, err := a.getSaveFilePath()
 		if err == nil {
-			licenseData := LicenseData{
-				HasSuperBundle:    true,
-				LicenseKey:        key,
-				HighestPowerLevel: 0,
+			// Generate the hardware-locked signature
+			signature, sigErr := a.generateHardwareSignature(key)
+			if sigErr == nil {
+				licenseData := LicenseData{
+					Signature:         signature, // Save the uncrackable hash
+					LicenseKey:        key,
+					HighestPowerLevel: 0,
+				}
+				fileData, _ := json.MarshalIndent(licenseData, "", "  ")
+				os.WriteFile(savePath, fileData, 0644)
 			}
-			fileData, _ := json.MarshalIndent(licenseData, "", "  ")
-			os.WriteFile(savePath, fileData, 0644)
 		}
 	}
 
@@ -224,11 +244,25 @@ func (a *App) CheckSuperBundleStatus() bool {
 	if err != nil {
 		return false
 	}
+
 	var licenseData LicenseData
 	if err := json.Unmarshal(fileData, &licenseData); err != nil {
 		return false
 	}
-	return licenseData.HasSuperBundle
+
+	// If there is no signature or key, it's immediately invalid
+	if licenseData.Signature == "" || licenseData.LicenseKey == "" {
+		return false
+	}
+
+	// Recalculate the signature based on the CURRENT machine
+	expectedSignature, err := a.generateHardwareSignature(licenseData.LicenseKey)
+	if err != nil {
+		return false
+	}
+
+	// If the hashes match, the user is on the original machine and the file wasn't tampered with
+	return licenseData.Signature == expectedSignature
 }
 
 func (a *App) SavePowerLevel(level int) {
