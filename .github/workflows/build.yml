@@ -10,27 +10,29 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4 # Updated to v4 to fix warnings
+        uses: actions/checkout@v4
 
       - name: Setup Go
-        uses: actions/setup-go@v5 # Updated to v5
+        uses: actions/setup-go@v5
         with:
           go-version: '1.25.5' 
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4 # Updated to v4
+        uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      - name: Build Wails App (Windows)
-        run: wails build -clean -m 
+      - name: Build Wails App (Windows Installer)
+        # The -nsis flag tells Wails to wrap the .exe in a Setup Wizard!
+        run: wails build -clean -m -nsis
 
       - name: Upload Release Asset
-        uses: softprops/action-gh-release@v2 # Updated to v2
+        uses: softprops/action-gh-release@v2
         with:
-          files: build/bin/*
+          # Wails automatically adds the '-amd64-installer.exe' suffix
+          files: build/bin/*-installer.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -9,5 +9,12 @@
   "author": {
     "name": "kaushik0010",
     "email": "paykolikaushikb@gmail.com"
+  },
+  "info": {
+    "companyName": "Scream Cursor",
+    "productName": "Scream Cursor",
+    "productVersion": "2.0.0",
+    "copyright": "Copyright 2026",
+    "comments": "The Unhinged Super Fighter Cursor Pet"
   }
 }

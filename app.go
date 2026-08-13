@@ -17,7 +17,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/denisbrodbeck/machineid" // Hardware ID package
+	"github.com/creativeprojects/go-selfupdate"
+	"github.com/denisbrodbeck/machineid"
 	"github.com/getlantern/systray"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"golang.org/x/sys/windows/registry"
@@ -26,8 +27,12 @@ import (
 //go:embed tray-icon.ico
 var iconBytes []byte
 
-// A secret salt to make the hash uncrackable even if they know their HWID
-const appSecretSalt = "SCRM_CRSR_SUPER_BUNDLE_SALT_9982"
+// Constants
+const (
+	appSecretSalt     = "SCRM_CRSR_SUPER_BUNDLE_SALT_9982"
+	CurrentAppVersion = "v2.0.0"
+	GitHubRepo        = "kaushik0010/screamcursor"
+)
 
 var (
 	moduser32  = syscall.NewLazyDLL("user32.dll")
@@ -61,11 +66,16 @@ type ValidateResponse struct {
 	Valid bool `json:"valid"`
 }
 
-// PHASE 7: UPDATED LICENSE DATA STRUCT
 type LicenseData struct {
-	Signature         string `json:"signature"` // Replaces the easily hacked boolean
+	Signature         string `json:"signature"`
 	LicenseKey        string `json:"licenseKey"`
 	HighestPowerLevel int    `json:"highestPowerLevel"`
+}
+
+type UpdateInfo struct {
+	Available    bool   `json:"available"`
+	NewVersion   string `json:"newVersion"`
+	ReleaseNotes string `json:"releaseNotes"`
 }
 
 func NewApp() *App {
@@ -185,10 +195,9 @@ func (a *App) getSaveFilePath() (string, error) {
 	return filepath.Join(appDir, "scream_license.json"), nil
 }
 
-// --- PHASE 7: CRYPTOGRAPHIC HARDWARE BINDING ---
 // Generates a SHA-256 hash using the physical machine ID, the license key, and a secret salt
 func (a *App) generateHardwareSignature(licenseKey string) (string, error) {
-	hwid, err := machineid.ID() // Grabs the unique motherboard/OS UUID
+	hwid, err := machineid.ID()
 	if err != nil {
 		return "", err
 	}
@@ -218,11 +227,10 @@ func (a *App) ValidateLicense(key string) (bool, error) {
 	if dodoResp.Valid {
 		savePath, err := a.getSaveFilePath()
 		if err == nil {
-			// Generate the hardware-locked signature
 			signature, sigErr := a.generateHardwareSignature(key)
 			if sigErr == nil {
 				licenseData := LicenseData{
-					Signature:         signature, // Save the uncrackable hash
+					Signature:         signature,
 					LicenseKey:        key,
 					HighestPowerLevel: 0,
 				}
@@ -250,18 +258,15 @@ func (a *App) CheckSuperBundleStatus() bool {
 		return false
 	}
 
-	// If there is no signature or key, it's immediately invalid
 	if licenseData.Signature == "" || licenseData.LicenseKey == "" {
 		return false
 	}
 
-	// Recalculate the signature based on the CURRENT machine
 	expectedSignature, err := a.generateHardwareSignature(licenseData.LicenseKey)
 	if err != nil {
 		return false
 	}
 
-	// If the hashes match, the user is on the original machine and the file wasn't tampered with
 	return licenseData.Signature == expectedSignature
 }
 
@@ -298,4 +303,59 @@ func (a *App) GetHighestPowerLevel() int {
 		return 0
 	}
 	return licenseData.HighestPowerLevel
+}
+
+// --- OTA AUTO-UPDATER METHODS ---
+
+func (a *App) CheckForUpdates() (UpdateInfo, error) {
+	updater, err := selfupdate.NewUpdater(selfupdate.Config{})
+	if err != nil {
+		return UpdateInfo{}, fmt.Errorf("failed to create updater: %w", err)
+	}
+
+	latest, found, err := updater.DetectLatest(context.Background(), selfupdate.ParseSlug(GitHubRepo))
+	if err != nil {
+		return UpdateInfo{}, fmt.Errorf("error detecting latest version: %w", err)
+	}
+
+	if !found {
+		return UpdateInfo{Available: false}, nil
+	}
+
+	if latest.GreaterThan(CurrentAppVersion) {
+		return UpdateInfo{
+			Available:    true,
+			NewVersion:   latest.Version(),
+			ReleaseNotes: latest.ReleaseNotes,
+		}, nil
+	}
+
+	return UpdateInfo{Available: false}, nil
+}
+
+func (a *App) PerformSelfUpdate() (bool, error) {
+	updater, err := selfupdate.NewUpdater(selfupdate.Config{})
+	if err != nil {
+		return false, fmt.Errorf("failed to initialize updater: %w", err)
+	}
+
+	latest, found, err := updater.DetectLatest(context.Background(), selfupdate.ParseSlug(GitHubRepo))
+	if err != nil || !found {
+		return false, fmt.Errorf("no update target found: %v", err)
+	}
+
+	exePath, err := os.Executable()
+	if err != nil {
+		return false, fmt.Errorf("could not locate current executable: %w", err)
+	}
+
+	if err := updater.UpdateTo(context.Background(), latest, exePath); err != nil {
+		return false, fmt.Errorf("update failed: %w", err)
+	}
+
+	return true, nil
+}
+
+func (a *App) GetAppVersion() string {
+	return CurrentAppVersion
 }
