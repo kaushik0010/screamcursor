@@ -28,7 +28,7 @@ const FORM_MAP = {
     ],
     beast: [
         { name: 'BASE', level: 0 },
-        { name: 'GOLD', level: 2 },
+        { name: 'GOLD', level: 1 },
         { name: 'ULTIMATE_WHITE', level: 4 }
     ],
     berserker: [
@@ -41,6 +41,14 @@ const FORM_MAP = {
         { name: 'DIVINE_ROSE', level: 3 }
     ]
 };
+
+// Reusable Tooltip Component
+const InfoTooltip = ({ text }) => (
+    <div className="tooltip-container">
+        <span className="tooltip-icon">?</span>
+        <span className="tooltip-text">{text}</span>
+    </div>
+);
 
 export default function Dashboard({ 
     onClose, 
@@ -82,7 +90,7 @@ export default function Dashboard({
 
     return (
         <>
-            {/* Injecting brutalist scrollbar styles directly for the carousel */}
+            {/* Injecting brutalist scrollbar and tooltip styles */}
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar {
                     width: 8px;
@@ -98,6 +106,58 @@ export default function Dashboard({
                 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
                     background: #ef4444;
                 }
+                
+                /* Tooltip CSS */
+                .tooltip-container {
+                    position: relative;
+                    display: inline-flex;
+                    align-items: center;
+                    margin-left: 8px;
+                    cursor: help;
+                }
+                .tooltip-icon {
+                    background: #333;
+                    color: #aaa;
+                    border-radius: 50%;
+                    width: 14px;
+                    height: 14px;
+                    display: inline-flex;
+                    justify-content: center;
+                    align-items: center;
+                    font-size: 10px;
+                    font-weight: bold;
+                    border: 1px solid #555;
+                    transition: background 0.2s, color 0.2s;
+                }
+                .tooltip-container:hover .tooltip-icon {
+                    background: #eab308;
+                    color: #000;
+                    border-color: #eab308;
+                }
+                .tooltip-text {
+                    visibility: hidden;
+                    width: 160px;
+                    background-color: #111;
+                    color: #e5e5e5;
+                    text-align: center;
+                    border: 1px solid #444;
+                    padding: 6px;
+                    position: absolute;
+                    z-index: 10;
+                    bottom: 150%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    font-size: 9px;
+                    line-height: 1.4;
+                    opacity: 0;
+                    transition: opacity 0.2s;
+                    pointer-events: none;
+                    box-shadow: 0px 4px 6px rgba(0,0,0,0.5);
+                }
+                .tooltip-container:hover .tooltip-text {
+                    visibility: visible;
+                    opacity: 1;
+                }
             `}</style>
 
             <div className="dashboard-overlay">
@@ -110,29 +170,54 @@ export default function Dashboard({
 
                 <div className="dashboard-content">
                     {/* Left Side: Settings & Paywall */}
-                    <div className="settings-panel">
+                    <div className="settings-panel custom-scrollbar" style={{ overflowY: 'auto' }}>
                         <h2 style={{marginTop: 0, marginBottom: '25px', fontSize: '14px', letterSpacing: '2px', color: '#e5e5e5'}}>PREFERENCES</h2>
                         
                         <div className="setting-row">
-                            <label>Run in Background (System Tray)</label>
+                            <label style={{ display: 'flex', alignItems: 'center' }}>
+                                Run in Background 
+                                <InfoTooltip text="Keeps the app running invisibly in your system tray when you close this window." />
+                            </label>
                             <div className={`brutalist-switch ${settings.runInBackground ? 'on' : ''}`} onClick={() => handleToggle('runInBackground')} />
                         </div>
+
+                        {/* --- PHASE 6: AUTO START TOGGLE --- */}
                         <div className="setting-row">
-                            <label>Mute Scream (Face Only)</label>
+                            <label style={{ display: 'flex', alignItems: 'center' }}>
+                                Run on System Startup
+                                <InfoTooltip text="Automatically launches the app silently in the background every time you turn on your PC." />
+                            </label>
+                            <div className={`brutalist-switch ${settings.autoStart ? 'on' : ''}`} onClick={() => handleToggle('autoStart')} />
+                        </div>
+
+                        <div className="setting-row">
+                            <label style={{ display: 'flex', alignItems: 'center' }}>
+                                Mute Scream (Face Only)
+                                <InfoTooltip text="Disables the screaming sound effect. The 3D face will still react visually to your mouse." />
+                            </label>
                             <div className={`brutalist-switch ${settings.muteScream ? 'on' : ''}`} onClick={() => handleToggle('muteScream')} />
                         </div>
                         <div className="setting-row">
-                            <label>Invisible Mode (Scream Only)</label>
+                            <label style={{ display: 'flex', alignItems: 'center' }}>
+                                Invisible Mode
+                                <InfoTooltip text="Hides the 3D face entirely. The app runs as a pure audio background process." />
+                            </label>
                             <div className={`brutalist-switch ${settings.invisibleMode ? 'on' : ''}`} onClick={() => handleToggle('invisibleMode')} />
                         </div>
                         <div className="setting-row">
-                            <label>Boundless OS Tracking</label>
+                            <label style={{ display: 'flex', alignItems: 'center' }}>
+                                Boundless OS Tracking
+                                <InfoTooltip text="Reads mouse movements across your entire screen, not just inside the app window." />
+                            </label>
                             <div className={`brutalist-switch ${settings.boundlessTracking ? 'on' : ''}`} onClick={() => handleToggle('boundlessTracking')} />
                         </div>
 
                         {/* --- PHASE 5: THE MICROPHONE TOGGLE --- */}
                         <div className="setting-row" style={{ marginTop: '15px', borderTop: '1px solid #333', paddingTop: '15px' }}>
-                            <label style={{ color: '#eab308', fontWeight: 'bold' }}>Enable Mic (Scream to Power Up)</label>
+                            <label style={{ color: '#eab308', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                                Enable Mic Input
+                                <InfoTooltip text="Uses your real microphone. Yell to charge your Ki meter instead of shaking the mouse!" />
+                            </label>
                             <div className={`brutalist-switch ${settings.enableMicInput ? 'on' : ''}`} onClick={() => handleToggle('enableMicInput')} />
                         </div>
 
@@ -189,7 +274,6 @@ export default function Dashboard({
                             </div>
                         )}
 
-                        {/* Added custom-scrollbar class here */}
                         <div className="carousel-panel custom-scrollbar" style={{ flexGrow: 1, overflowY: 'auto', paddingBottom: '60px', paddingRight: '10px' }}>
                             
                             {interceptorMessage && (

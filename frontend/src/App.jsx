@@ -1,4 +1,4 @@
-// frontend/src/App.jsx:
+// frontend/src/App.jsx
 import { useEffect, useRef, useState } from 'react';
 import { VisualEngine } from './engines/VisualEngine.js';
 import { AudioEngine } from './engines/AudioEngine.js';
@@ -6,7 +6,8 @@ import { BaseFace } from './actors/BaseFace.js';
 import screamFile from './assets/sounds/scream-man.mp3';
 import { EventsOn, WindowSetSize, WindowCenter, WindowSetPosition, WindowHide, WindowShow } from '../wailsjs/runtime/runtime';
 
-import { ToggleBoundlessMode, CheckSuperBundleStatus, ValidateLicense, GetHighestPowerLevel, SavePowerLevel } from '../wailsjs/go/main/App.js';
+// Import ToggleAutoStart from the backend
+import { ToggleBoundlessMode, ToggleAutoStart, CheckSuperBundleStatus, ValidateLicense, GetHighestPowerLevel, SavePowerLevel } from '../wailsjs/go/main/App.js';
 
 import Dashboard from './components/Dashboard';
 import { DemonFace } from './actors/DemonFace.js';
@@ -24,7 +25,6 @@ import { AnomalyFace } from './actors/warriors/AnomalyFace.js';
 const SUPER_ENTITIES = ['fighter', 'prince', 'beast', 'berserker', 'anomaly'];
 
 // --- GLOBAL ROSTER DICTIONARY ---
-// Defines the exact power requirements and form names for every future entity
 const ENTITY_THRESHOLDS = {
     fighter: [
         { level: 0, form: 'BASE', required: 0 }, 
@@ -82,6 +82,7 @@ export default function App() {
 
     const settingsRef = useRef({
         runInBackground: true,
+        autoStart: false, // Added autoStart to default state
         muteScream: false,
         invisibleMode: false,
         boundlessTracking: true,
@@ -98,6 +99,12 @@ export default function App() {
             if (prev.boundlessTracking !== next.boundlessTracking) {
                 ToggleBoundlessMode(next.boundlessTracking);
             }
+            
+            // Intercept autoStart toggle and hit the Registry Backend
+            if (prev.autoStart !== next.autoStart) {
+                ToggleAutoStart(next.autoStart).catch(err => console.error("Failed to set Registry auto-start:", err));
+            }
+            
             return next;
         });
     };
@@ -178,7 +185,6 @@ export default function App() {
     // --- THE UNIVERSAL POWER ENGINE LOOP ---
     useEffect(() => {
         const powerInterval = setInterval(() => {
-            // FIX: Now runs for any character in the DLC roster
             if (!SUPER_ENTITIES.includes(activeEntity)) return;
 
             const now = Date.now();
@@ -189,7 +195,7 @@ export default function App() {
                 powerRef.current = Math.max(0, powerRef.current - 5); 
             }
 
-            // 2. Microphone DSP Injection (Works for everyone)
+            // 2. Microphone DSP Injection 
             if (audioRef.current && settingsRef.current.enableMicInput) {
                 const micData = audioRef.current.getScreamData();
                 
@@ -207,7 +213,7 @@ export default function App() {
                 }
             }
 
-            // 3. Determine current form dynamically based on the active character
+            // 3. Determine current form dynamically
             let achievedLevel = 0;
             let achievedForm = 'BASE';
             const thresholds = ENTITY_THRESHOLDS[activeEntity];
@@ -251,7 +257,6 @@ export default function App() {
     useEffect(() => {
         if (!visualRef.current || !audioRef.current) return;
 
-        // FIX: Universally reset the power meter and forms BEFORE loading any new actor
         powerRef.current = 0; 
         setPowerMeter(0);
         currentRenderedForm.current = 'BASE';
@@ -283,10 +288,9 @@ export default function App() {
             audioRef.current.loadSound(screamFile);
         } else if (activeEntity === 'anomaly') {
             visualRef.current.loadActor(new AnomalyFace());
-            audioRef.current.loadSound(screamFile); // You can use standard scream, or swap for a villain laugh file later!
+            audioRef.current.loadSound(screamFile); 
         }
 
-        // Give the visual engine 50ms to spawn the mesh before forcing the form state
         setTimeout(() => {
             if (visualRef.current) visualRef.current.setTargetForm('BASE');
         }, 50);
@@ -454,7 +458,7 @@ export default function App() {
                     isPremium={isPremium}
                     interceptorMessage={interceptorMessage}
                     onValidateKey={handleValidateKey}
-                    targetForm={targetForm}           
+                    targetForm={targetForm}          
                     setTargetForm={setTargetForm}
                     powerMeter={powerMeter}
                     unlockedLevel={unlockedLevel}     

@@ -17,6 +17,7 @@ import (
 
 	"github.com/getlantern/systray"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"golang.org/x/sys/windows/registry" // Added for Windows Registry access
 )
 
 //go:embed tray-icon.ico
@@ -140,6 +141,36 @@ func (a *App) ToggleBoundlessMode(enabled bool) {
 	a.isBoundless = enabled
 }
 
+// --- PHASE 6: AUTO-START WINDOWS REGISTRY INJECTION ---
+func (a *App) ToggleAutoStart(enabled bool) error {
+	// 1. Get the exact path to this compiled .exe
+	exePath, err := os.Executable()
+	if err != nil {
+		return err
+	}
+
+	// 2. Format the command with our secret stealth flag
+	runCmd := fmt.Sprintf(`"%s" --background-boot`, exePath)
+
+	// 3. Open the Windows Run registry key
+	key, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Run`, registry.ALL_ACCESS)
+	if err != nil {
+		return err
+	}
+	defer key.Close()
+
+	// 4. Inject or Remove the key based on the toggle
+	if enabled {
+		return key.SetStringValue("ScreamCursor", runCmd)
+	} else {
+		err := key.DeleteValue("ScreamCursor")
+		if err != registry.ErrNotExist {
+			return err
+		}
+		return nil
+	}
+}
+
 func (a *App) getSaveFilePath() (string, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
@@ -174,7 +205,7 @@ func (a *App) ValidateLicense(key string) (bool, error) {
 			licenseData := LicenseData{
 				HasSuperBundle:    true,
 				LicenseKey:        key,
-				HighestPowerLevel: 0, // Everyone starts at Base Form
+				HighestPowerLevel: 0,
 			}
 			fileData, _ := json.MarshalIndent(licenseData, "", "  ")
 			os.WriteFile(savePath, fileData, 0644)
@@ -219,7 +250,6 @@ func (a *App) SavePowerLevel(level int) {
 	}
 }
 
-// --- PHASE 4: NEW BINDING TO READ SAVED PROGRESS ---
 func (a *App) GetHighestPowerLevel() int {
 	savePath, err := a.getSaveFilePath()
 	if err != nil {
