@@ -16,14 +16,44 @@ import catScreamFile from './assets/sounds/scream-frantic-cat.mp3';
 import { WomanFace } from './actors/WomanFace.js';
 import womanScreamFile from './assets/sounds/scream-woman.mp3';
 import { FighterFace } from './actors/warriors/FighterFace.js';
+import { PrinceFace } from './actors/warriors/PrinceFace.js';
+import { BeastFace } from './actors/warriors/BeastFace.js';
+import { BerserkerFace } from './actors/warriors/BerserkerFace.js';
+import { AnomalyFace } from './actors/warriors/AnomalyFace.js';
 
-const FIGHTER_THRESHOLDS = [
-    { level: 0, form: 'BASE', required: 0 },
-    { level: 1, form: 'GOLD', required: 500 },
-    { level: 2, form: 'DIVINE_RED', required: 1500 },
-    { level: 3, form: 'DIVINE_BLUE', required: 3000 },
-    { level: 4, form: 'AUTONOMOUS', required: 5000 }
-];
+const SUPER_ENTITIES = ['fighter', 'prince', 'beast', 'berserker', 'anomaly'];
+
+// --- GLOBAL ROSTER DICTIONARY ---
+// Defines the exact power requirements and form names for every future entity
+const ENTITY_THRESHOLDS = {
+    fighter: [
+        { level: 0, form: 'BASE', required: 0 }, 
+        { level: 1, form: 'GOLD', required: 500 },
+        { level: 2, form: 'DIVINE_RED', required: 1500 },
+        { level: 3, form: 'DIVINE_BLUE', required: 3000 },
+        { level: 4, form: 'AUTONOMOUS', required: 5000 }
+    ],
+    prince: [
+        { level: 0, form: 'BASE', required: 0 },
+        { level: 1, form: 'GOLD', required: 500 },
+        { level: 3, form: 'DIVINE_BLUE', required: 3000 },
+        { level: 4, form: 'ULTRA_EGO', required: 5000 }
+    ],
+    beast: [
+        { level: 0, form: 'BASE', required: 0 },
+        { level: 2, form: 'GOLD', required: 1500 },
+        { level: 4, form: 'ULTIMATE_WHITE', required: 5000 }
+    ],
+    berserker: [
+        { level: 0, form: 'BASE', required: 0 },
+        { level: 1, form: 'LEGENDARY_GREEN', required: 1500 }
+    ],
+    anomaly: [
+        { level: 0, form: 'BASE', required: 0 },
+        { level: 1, form: 'GOLD', required: 500 },
+        { level: 3, form: 'DIVINE_ROSE', required: 3000 }
+    ]
+};
 
 export default function App() {
     const canvasRef = useRef(null);
@@ -55,7 +85,7 @@ export default function App() {
         muteScream: false,
         invisibleMode: false,
         boundlessTracking: true,
-        enableMicInput: false // PHASE 5: Mic defaults to false
+        enableMicInput: false 
     });
 
     const [settings, setSettingsState] = useState(settingsRef.current);
@@ -72,7 +102,6 @@ export default function App() {
         });
     };
 
-    // --- PHASE 5: THE MIC PERMISSION HOOK ---
     useEffect(() => {
         if (!audioRef.current) return;
 
@@ -81,7 +110,6 @@ export default function App() {
                 if (!success) {
                     setInterceptorMessage('MIC ACCESS DENIED BY OS OR BROWSER.');
                     setTimeout(() => setInterceptorMessage(''), 4000);
-                    // Force the setting back off if permission fails
                     setSettings(prev => ({ ...prev, enableMicInput: false }));
                 } else {
                     setInterceptorMessage('MIC ENABLED. SCREAM TO CHARGE KI.');
@@ -136,7 +164,6 @@ export default function App() {
             const CHARGE_MIN_SPEED = 2.5; 
             const CHARGE_MULTIPLIER = 0.6; 
 
-            // FIX: Only allow mouse to charge Ki if the mic is DISABLED
             if (!currentSettings.enableMicInput && data.speed > CHARGE_MIN_SPEED) {
                 powerRef.current = Math.min(5000, powerRef.current + (data.speed * CHARGE_MULTIPLIER));
                 lastInteractionTime.current = Date.now();
@@ -148,10 +175,11 @@ export default function App() {
         });
     }, []);
 
-    // --- THE POWER ENGINE LOOP ---
+    // --- THE UNIVERSAL POWER ENGINE LOOP ---
     useEffect(() => {
         const powerInterval = setInterval(() => {
-            if (activeEntity !== 'fighter') return;
+            // FIX: Now runs for any character in the DLC roster
+            if (!SUPER_ENTITIES.includes(activeEntity)) return;
 
             const now = Date.now();
             const timeSinceLastAction = now - lastInteractionTime.current;
@@ -161,17 +189,14 @@ export default function App() {
                 powerRef.current = Math.max(0, powerRef.current - 5); 
             }
 
-            // --- PHASE 5: MICROPHONE INJECTION (DSP REFINED) ---
+            // 2. Microphone DSP Injection (Works for everyone)
             if (audioRef.current && settingsRef.current.enableMicInput) {
                 const micData = audioRef.current.getScreamData();
                 
-                // Triggers ONLY if volume crosses 35% AND high-frequency density ratio passes threshold
                 if (micData.isScreaming) {
-                    // Inject power directly based on vocal strain intensity
-                    powerRef.current = Math.min(5000, powerRef.current + (micData.intensity * 55));
+                    powerRef.current = Math.min(5000, powerRef.current + (micData.intensity * 25));
                     lastInteractionTime.current = Date.now();
                     
-                    // Drive 3D model mouth deformation
                     if (visualRef.current) {
                         visualRef.current.update({
                             x: lastMouseRef.current.x,
@@ -182,19 +207,22 @@ export default function App() {
                 }
             }
 
-            // 2. Determine current form
+            // 3. Determine current form dynamically based on the active character
             let achievedLevel = 0;
             let achievedForm = 'BASE';
+            const thresholds = ENTITY_THRESHOLDS[activeEntity];
             
-            for (let i = FIGHTER_THRESHOLDS.length - 1; i >= 0; i--) {
-                if (powerRef.current >= FIGHTER_THRESHOLDS[i].required) {
-                    achievedLevel = FIGHTER_THRESHOLDS[i].level;
-                    achievedForm = FIGHTER_THRESHOLDS[i].form;
-                    break;
+            if (thresholds) {
+                for (let i = thresholds.length - 1; i >= 0; i--) {
+                    if (powerRef.current >= thresholds[i].required) {
+                        achievedLevel = thresholds[i].level;
+                        achievedForm = thresholds[i].form;
+                        break;
+                    }
                 }
             }
 
-            // 3. Trigger Transformation
+            // 4. Trigger Transformation
             if (currentRenderedForm.current !== achievedForm) {
                 currentRenderedForm.current = achievedForm;
                 if (visualRef.current) {
@@ -202,7 +230,7 @@ export default function App() {
                 }
             }
 
-            // 4. Save New High Score
+            // 5. Save Global Progression
             if (achievedLevel > maxUnlockedRef.current) {
                 maxUnlockedRef.current = achievedLevel;
                 setUnlockedLevel(achievedLevel); 
@@ -211,7 +239,7 @@ export default function App() {
                 setTimeout(() => setInterceptorMessage(''), 4000);
             }
 
-            // 5. Sync UI
+            // 6. Sync UI
             setPowerMeter(Math.floor(powerRef.current));
 
         }, 100);
@@ -219,8 +247,15 @@ export default function App() {
         return () => clearInterval(powerInterval);
     }, [activeEntity]);
 
+    // --- THE ASSET SWAPPER & RESET MANAGER ---
     useEffect(() => {
         if (!visualRef.current || !audioRef.current) return;
+
+        // FIX: Universally reset the power meter and forms BEFORE loading any new actor
+        powerRef.current = 0; 
+        setPowerMeter(0);
+        currentRenderedForm.current = 'BASE';
+        setTargetForm('BASE');
 
         if (activeEntity === 'base') {
             visualRef.current.loadActor(new BaseFace());
@@ -237,13 +272,25 @@ export default function App() {
         } else if (activeEntity === 'fighter') {
             visualRef.current.loadActor(new FighterFace());
             audioRef.current.loadSound(screamFile);
-            
-            powerRef.current = 0; 
-            currentRenderedForm.current = 'BASE';
-            setTimeout(() => {
-                if (visualRef.current) visualRef.current.setTargetForm('BASE');
-            }, 50);
+        } else if (activeEntity === 'prince') {
+            visualRef.current.loadActor(new PrinceFace());
+            audioRef.current.loadSound(screamFile);
+        } else if (activeEntity === 'beast') {
+            visualRef.current.loadActor(new BeastFace());
+            audioRef.current.loadSound(screamFile);
+        } else if (activeEntity === 'berserker') {
+            visualRef.current.loadActor(new BerserkerFace());
+            audioRef.current.loadSound(screamFile);
+        } else if (activeEntity === 'anomaly') {
+            visualRef.current.loadActor(new AnomalyFace());
+            audioRef.current.loadSound(screamFile); // You can use standard scream, or swap for a villain laugh file later!
         }
+
+        // Give the visual engine 50ms to spawn the mesh before forcing the form state
+        setTimeout(() => {
+            if (visualRef.current) visualRef.current.setTargetForm('BASE');
+        }, 50);
+        
     }, [activeEntity]);
 
     useEffect(() => {
@@ -254,11 +301,9 @@ export default function App() {
         }
     }, [isDashboardOpen]);
 
-    const premiumEntities = ['fighter', 'prince', 'beast', 'berserker', 'anomaly'];
-
     useEffect(() => {
         const handleFocusLost = () => {
-            if (!isPremium && premiumEntities.includes(activeEntity)) {
+            if (!isPremium && SUPER_ENTITIES.includes(activeEntity)) {
                 setActiveEntity('base'); 
                 setInterceptorMessage('NICE TRY. SUPER FIGHTER BUNDLE REQUIRED FOR BACKGROUND USE.');
                 setTimeout(() => setInterceptorMessage(''), 4000);
@@ -272,7 +317,7 @@ export default function App() {
     const handleCloseDashboard = () => {
         if (isTransitioning.current) return; 
 
-        if (!isPremium && premiumEntities.includes(activeEntity)) {
+        if (!isPremium && SUPER_ENTITIES.includes(activeEntity)) {
             setActiveEntity('base');
             setInterceptorMessage('ERROR: THE SUPER FIGHTER BUNDLE IS REQUIRED TO UNLEASH THIS ENTITY.');
             setTimeout(() => setInterceptorMessage(''), 4000);
@@ -367,7 +412,6 @@ export default function App() {
             const CHARGE_MIN_SPEED = 2.5; 
             const CHARGE_MULTIPLIER = 0.6; 
 
-            // FIX: Only allow mouse to charge Ki if the mic is DISABLED
             if (!currentSettings.enableMicInput && speed > CHARGE_MIN_SPEED) {
                 powerRef.current = Math.min(5000, powerRef.current + (speed * CHARGE_MULTIPLIER));
                 lastInteractionTime.current = Date.now();
