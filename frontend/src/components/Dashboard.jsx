@@ -1,9 +1,10 @@
 // frontend/src/components/Dashboard.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+// Import the Wails Go bindings for the Auto-Updater
+import { CheckForUpdates, PerformSelfUpdate, GetAppVersion } from '../../wailsjs/go/main/App.js';
 
 const SUPER_ENTITIES = ['fighter', 'prince', 'beast', 'berserker', 'anomaly'];
 
-// Dynamically sets the ceiling for the power meter
 const MAX_POWER_MAP = {
     fighter: 5000,
     prince: 5000,
@@ -28,7 +29,7 @@ const FORM_MAP = {
     ],
     beast: [
         { name: 'BASE', level: 0 },
-        { name: 'GOLD', level: 1 },
+        { name: 'GOLD', level: 2 },
         { name: 'ULTIMATE_WHITE', level: 4 }
     ],
     berserker: [
@@ -42,7 +43,6 @@ const FORM_MAP = {
     ]
 };
 
-// Reusable Tooltip Component
 const InfoTooltip = ({ text }) => (
     <div className="tooltip-container">
         <span className="tooltip-icon">?</span>
@@ -66,6 +66,24 @@ export default function Dashboard({
 }) {
     const [licenseInput, setLicenseInput] = useState('');
     const [isVerifying, setIsVerifying] = useState(false);
+    
+    // OTA Updater State
+    const [currentVersion, setCurrentVersion] = useState('v2.0.0');
+    const [updateInfo, setUpdateInfo] = useState({ available: false, newVersion: '', releaseNotes: '' });
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [updateError, setUpdateError] = useState('');
+
+    useEffect(() => {
+        // Fetch current version for the title bar
+        GetAppVersion().then(setCurrentVersion).catch(console.error);
+        
+        // Silently check GitHub for a new release
+        CheckForUpdates().then(info => {
+            if (info && info.available) {
+                setUpdateInfo(info);
+            }
+        }).catch(err => console.error("OTA Check Failed:", err));
+    }, []);
 
     const handleToggle = (key) => {
         setSettings(prev => ({ ...prev, [key]: !prev[key] }));
@@ -84,13 +102,27 @@ export default function Dashboard({
         setTargetForm('BASE');
     };
 
-    // Dynamically calculate percentages based on the active character's true max power
+    const handlePerformUpdate = async () => {
+        setIsUpdating(true);
+        setUpdateError('');
+        try {
+            const success = await PerformSelfUpdate();
+            if (!success) {
+                setUpdateError('UPDATE FAILED: Manual download required.');
+                setIsUpdating(false);
+            }
+            // If success is true, the app will auto-restart via Go, so we leave it in the loading state.
+        } catch (err) {
+            setUpdateError(`SYS_ERROR: ${err.message}`);
+            setIsUpdating(false);
+        }
+    };
+
     const maxPower = MAX_POWER_MAP[activeEntity] || 5000;
     const powerPercentage = Math.min(100, (powerMeter / maxPower) * 100);
 
     return (
         <>
-            {/* Injecting brutalist scrollbar and tooltip styles */}
             <style>{`
                 .custom-scrollbar::-webkit-scrollbar {
                     width: 8px;
@@ -107,7 +139,6 @@ export default function Dashboard({
                     background: #ef4444;
                 }
                 
-                /* Tooltip CSS */
                 .tooltip-container {
                     position: relative;
                     display: inline-flex;
@@ -163,7 +194,7 @@ export default function Dashboard({
             <div className="dashboard-overlay">
                 <div className="title-bar" style={{ '--wails-drop-target': 'drop' }}>
                     <div className="title-drag-area" style={{ '--wails-draggable': 'drag' }}>
-                        SCRM_CRSR // CONTROL_PANEL_V2.0
+                        SCRM_CRSR // CONTROL_PANEL_{currentVersion.toUpperCase()}
                     </div>
                     <button className="close-btn" onClick={onClose}>✕</button>
                 </div>
@@ -171,6 +202,45 @@ export default function Dashboard({
                 <div className="dashboard-content">
                     {/* Left Side: Settings & Paywall */}
                     <div className="settings-panel custom-scrollbar" style={{ overflowY: 'auto' }}>
+                        
+                        {/* --- PHASE 8: THE OTA UPDATE BANNER --- */}
+                        {updateInfo.available && (
+                            <div style={{ padding: '15px', marginBottom: '20px', background: '#022c22', border: '1px solid #10b981' }}>
+                                <h3 style={{ margin: '0 0 10px 0', color: '#10b981', fontSize: '12px', letterSpacing: '1px' }}>
+                                    SYS_UPDATE // v{updateInfo.newVersion} DETECTED
+                                </h3>
+                                <div style={{ 
+                                    background: '#000', 
+                                    padding: '8px', 
+                                    marginBottom: '15px', 
+                                    fontSize: '10px', 
+                                    color: '#a7f3d0', 
+                                    whiteSpace: 'pre-wrap', 
+                                    maxHeight: '100px', 
+                                    overflowY: 'auto' 
+                                }} className="custom-scrollbar">
+                                    {updateInfo.releaseNotes || 'Critical system updates and feature expansions.'}
+                                </div>
+                                <button 
+                                    onClick={handlePerformUpdate}
+                                    disabled={isUpdating}
+                                    style={{ 
+                                        width: '100%', 
+                                        padding: '10px', 
+                                        background: isUpdating ? '#064e3b' : '#10b981', 
+                                        color: '#000', 
+                                        border: 'none', 
+                                        cursor: isUpdating ? 'wait' : 'pointer', 
+                                        fontFamily: '"Space Mono", monospace', 
+                                        fontWeight: 'bold' 
+                                    }}
+                                >
+                                    {isUpdating ? 'DOWNLOADING & INSTALLING...' : 'INITIATE_UPDATE'}
+                                </button>
+                                {updateError && <div style={{ color: '#ef4444', fontSize: '10px', marginTop: '10px', fontWeight: 'bold' }}>{updateError}</div>}
+                            </div>
+                        )}
+
                         <h2 style={{marginTop: 0, marginBottom: '25px', fontSize: '14px', letterSpacing: '2px', color: '#e5e5e5'}}>PREFERENCES</h2>
                         
                         <div className="setting-row">
@@ -181,7 +251,6 @@ export default function Dashboard({
                             <div className={`brutalist-switch ${settings.runInBackground ? 'on' : ''}`} onClick={() => handleToggle('runInBackground')} />
                         </div>
 
-                        {/* --- PHASE 6: AUTO START TOGGLE --- */}
                         <div className="setting-row">
                             <label style={{ display: 'flex', alignItems: 'center' }}>
                                 Run on System Startup
@@ -212,7 +281,6 @@ export default function Dashboard({
                             <div className={`brutalist-switch ${settings.boundlessTracking ? 'on' : ''}`} onClick={() => handleToggle('boundlessTracking')} />
                         </div>
 
-                        {/* --- PHASE 5: THE MICROPHONE TOGGLE --- */}
                         <div className="setting-row" style={{ marginTop: '15px', borderTop: '1px solid #333', paddingTop: '15px' }}>
                             <label style={{ color: '#eab308', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
                                 Enable Mic Input
@@ -258,7 +326,6 @@ export default function Dashboard({
                             <div style={{ flexShrink: 0, marginBottom: '20px', padding: '10px', background: '#111', border: '2px solid #333' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                     <span style={{ fontSize: '10px', color: '#eab308' }}>POWER_LEVEL // DETECTED</span>
-                                    {/* Dynamically display the max power */}
                                     <span style={{ fontSize: '12px', color: '#fff', fontWeight: 'bold' }}>{powerMeter} / {maxPower}</span>
                                 </div>
                                 <div style={{ height: '12px', background: '#000', border: '1px solid #444', position: 'relative', overflow: 'hidden' }}>

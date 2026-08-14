@@ -4,9 +4,9 @@ import { VisualEngine } from './engines/VisualEngine.js';
 import { AudioEngine } from './engines/AudioEngine.js';
 import { BaseFace } from './actors/BaseFace.js';
 import screamFile from './assets/sounds/scream-man.mp3';
-import { EventsOn, WindowSetSize, WindowCenter, WindowSetPosition, WindowHide, WindowShow } from '../wailsjs/runtime/runtime';
+// ADDED 'Quit' to the runtime imports
+import { EventsOn, WindowSetSize, WindowCenter, WindowSetPosition, WindowHide, WindowShow, Quit } from '../wailsjs/runtime/runtime';
 
-// Import ToggleAutoStart from the backend
 import { ToggleBoundlessMode, ToggleAutoStart, CheckSuperBundleStatus, ValidateLicense, GetHighestPowerLevel, SavePowerLevel } from '../wailsjs/go/main/App.js';
 
 import Dashboard from './components/Dashboard';
@@ -82,7 +82,7 @@ export default function App() {
 
     const settingsRef = useRef({
         runInBackground: true,
-        autoStart: false, // Added autoStart to default state
+        autoStart: false,
         muteScream: false,
         invisibleMode: false,
         boundlessTracking: true,
@@ -100,7 +100,6 @@ export default function App() {
                 ToggleBoundlessMode(next.boundlessTracking);
             }
             
-            // Intercept autoStart toggle and hit the Registry Backend
             if (prev.autoStart !== next.autoStart) {
                 ToggleAutoStart(next.autoStart).catch(err => console.error("Failed to set Registry auto-start:", err));
             }
@@ -190,12 +189,10 @@ export default function App() {
             const now = Date.now();
             const timeSinceLastAction = now - lastInteractionTime.current;
             
-            // 1. Hold & Decay
             if (timeSinceLastAction > 120000) {
                 powerRef.current = Math.max(0, powerRef.current - 5); 
             }
 
-            // 2. Microphone DSP Injection 
             if (audioRef.current && settingsRef.current.enableMicInput) {
                 const micData = audioRef.current.getScreamData();
                 
@@ -213,7 +210,6 @@ export default function App() {
                 }
             }
 
-            // 3. Determine current form dynamically
             let achievedLevel = 0;
             let achievedForm = 'BASE';
             const thresholds = ENTITY_THRESHOLDS[activeEntity];
@@ -228,7 +224,6 @@ export default function App() {
                 }
             }
 
-            // 4. Trigger Transformation
             if (currentRenderedForm.current !== achievedForm) {
                 currentRenderedForm.current = achievedForm;
                 if (visualRef.current) {
@@ -236,7 +231,6 @@ export default function App() {
                 }
             }
 
-            // 5. Save Global Progression
             if (achievedLevel > maxUnlockedRef.current) {
                 maxUnlockedRef.current = achievedLevel;
                 setUnlockedLevel(achievedLevel); 
@@ -245,7 +239,6 @@ export default function App() {
                 setTimeout(() => setInterceptorMessage(''), 4000);
             }
 
-            // 6. Sync UI
             setPowerMeter(Math.floor(powerRef.current));
 
         }, 100);
@@ -320,6 +313,12 @@ export default function App() {
 
     const handleCloseDashboard = () => {
         if (isTransitioning.current) return; 
+
+        // --- BUG FIX: Kill the app entirely if background mode is disabled ---
+        if (!settingsRef.current.runInBackground) {
+            Quit();
+            return;
+        }
 
         if (!isPremium && SUPER_ENTITIES.includes(activeEntity)) {
             setActiveEntity('base');
