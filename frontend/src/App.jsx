@@ -4,12 +4,11 @@ import { VisualEngine } from './engines/VisualEngine.js';
 import { AudioEngine } from './engines/AudioEngine.js';
 import { BaseFace } from './actors/BaseFace.js';
 import screamFile from './assets/sounds/scream-man.mp3';
-// ADDED 'Quit' to the runtime imports
 import { EventsOn, WindowSetSize, WindowCenter, WindowSetPosition, WindowHide, WindowShow, Quit } from '../wailsjs/runtime/runtime';
 
 import { ToggleBoundlessMode, ToggleAutoStart, CheckSuperBundleStatus, ValidateLicense, GetHighestPowerLevel, SavePowerLevel } from '../wailsjs/go/main/App.js';
 
-import Dashboard from './components/Dashboard';
+import Dashboard from './components/Dashboard.jsx';
 import { DemonFace } from './actors/DemonFace.js';
 import demonScreamFile from './assets/sounds/scream-demon.mp3'; 
 import { CatFace } from './actors/CatFace.js';
@@ -22,7 +21,15 @@ import { BeastFace } from './actors/warriors/BeastFace.js';
 import { BerserkerFace } from './actors/warriors/BerserkerFace.js';
 import { AnomalyFace } from './actors/warriors/AnomalyFace.js';
 
-const SUPER_ENTITIES = ['fighter', 'prince', 'beast', 'berserker', 'anomaly'];
+// --- PHASE 9: IMPORTING THE CLASSIFIED BONUS ENTITIES ---
+import { SageFace } from './actors/warriors/SageFace.js';
+import { TyrantFace } from './actors/warriors/TyrantFace.js';
+// Using standard scream files for now, you can replace these mp3s later!
+import sageScreamFile from './assets/sounds/scream-man.mp3'; 
+import tyrantScreamFile from './assets/sounds/scream-demon.mp3'; 
+
+// Added sage and tyrant to SUPER_ENTITIES so they inherit premium background security
+const SUPER_ENTITIES = ['fighter', 'prince', 'beast', 'berserker', 'anomaly', 'sage', 'tyrant'];
 
 // --- GLOBAL ROSTER DICTIONARY ---
 const ENTITY_THRESHOLDS = {
@@ -52,6 +59,17 @@ const ENTITY_THRESHOLDS = {
         { level: 0, form: 'BASE', required: 0 },
         { level: 1, form: 'GOLD', required: 500 },
         { level: 3, form: 'DIVINE_ROSE', required: 3000 }
+    ],
+    // BONUS: THE SAGE (Piccolo Archetype)
+    sage: [
+        { level: 0, form: 'BASE', required: 0 },
+        { level: 3, form: 'FORGED_ORANGE', required: 3000 }
+    ],
+    // BONUS: THE TYRANT (Frieza Archetype)
+    tyrant: [
+        { level: 0, form: 'BASE', required: 0 },
+        { level: 3, form: 'GOLDEN', required: 3000 },
+        { level: 4, form: 'OBSIDIAN', required: 5000 }
     ]
 };
 
@@ -282,6 +300,12 @@ export default function App() {
         } else if (activeEntity === 'anomaly') {
             visualRef.current.loadActor(new AnomalyFace());
             audioRef.current.loadSound(screamFile); 
+        } else if (activeEntity === 'sage') {
+            visualRef.current.loadActor(new SageFace());
+            audioRef.current.loadSound(sageScreamFile); 
+        } else if (activeEntity === 'tyrant') {
+            visualRef.current.loadActor(new TyrantFace());
+            audioRef.current.loadSound(tyrantScreamFile); 
         }
 
         setTimeout(() => {
@@ -314,7 +338,6 @@ export default function App() {
     const handleCloseDashboard = () => {
         if (isTransitioning.current) return; 
 
-        // --- BUG FIX: Kill the app entirely if background mode is disabled ---
         if (!settingsRef.current.runInBackground) {
             Quit();
             return;
