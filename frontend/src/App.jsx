@@ -20,13 +20,14 @@ import { PrinceFace } from './actors/warriors/PrinceFace.js';
 import { BeastFace } from './actors/warriors/BeastFace.js';
 import { BerserkerFace } from './actors/warriors/BerserkerFace.js';
 import { AnomalyFace } from './actors/warriors/AnomalyFace.js';
+import warriorScreamFile from './assets/sounds/scream-warrior.mp3';
 
 // --- PHASE 9: IMPORTING THE CLASSIFIED BONUS ENTITIES ---
 import { SageFace } from './actors/warriors/SageFace.js';
 import { TyrantFace } from './actors/warriors/TyrantFace.js';
 // Using standard scream files for now, you can replace these mp3s later!
-import sageScreamFile from './assets/sounds/scream-man.mp3'; 
-import tyrantScreamFile from './assets/sounds/scream-demon.mp3'; 
+import sageScreamFile from './assets/sounds/scream-sage.mp3'; 
+import tyrantScreamFile from './assets/sounds/scream-tyrant.mp3'; 
 
 // Added sage and tyrant to SUPER_ENTITIES so they inherit premium background security
 const SUPER_ENTITIES = ['fighter', 'prince', 'beast', 'berserker', 'anomaly', 'sage', 'tyrant'];
@@ -287,19 +288,19 @@ export default function App() {
             audioRef.current.loadSound(womanScreamFile);
         } else if (activeEntity === 'fighter') {
             visualRef.current.loadActor(new FighterFace());
-            audioRef.current.loadSound(screamFile);
+            audioRef.current.loadSound(warriorScreamFile);
         } else if (activeEntity === 'prince') {
             visualRef.current.loadActor(new PrinceFace());
-            audioRef.current.loadSound(screamFile);
+            audioRef.current.loadSound(warriorScreamFile);
         } else if (activeEntity === 'beast') {
             visualRef.current.loadActor(new BeastFace());
-            audioRef.current.loadSound(screamFile);
+            audioRef.current.loadSound(warriorScreamFile);
         } else if (activeEntity === 'berserker') {
             visualRef.current.loadActor(new BerserkerFace());
-            audioRef.current.loadSound(screamFile);
+            audioRef.current.loadSound(warriorScreamFile);
         } else if (activeEntity === 'anomaly') {
             visualRef.current.loadActor(new AnomalyFace());
-            audioRef.current.loadSound(screamFile); 
+            audioRef.current.loadSound(warriorScreamFile); 
         } else if (activeEntity === 'sage') {
             visualRef.current.loadActor(new SageFace());
             audioRef.current.loadSound(sageScreamFile); 
