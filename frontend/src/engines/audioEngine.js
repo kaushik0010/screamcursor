@@ -96,7 +96,7 @@ export class AudioEngine {
         
         // 2. High Volume Gate (35% Volume)
         // Ignores fans, typing, background music, and normal talking volume.
-        const VOLUME_GATE = 0.25;   
+        const VOLUME_GATE = 0.15;   
         if (normalizedVolume < VOLUME_GATE) {
             return { isScreaming: false, intensity: 0, rawVolume: normalizedVolume, ratio: 0 };
         }

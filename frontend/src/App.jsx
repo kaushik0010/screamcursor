@@ -25,11 +25,9 @@ import warriorScreamFile from './assets/sounds/scream-warrior.mp3';
 // --- PHASE 9: IMPORTING THE CLASSIFIED BONUS ENTITIES ---
 import { SageFace } from './actors/warriors/SageFace.js';
 import { TyrantFace } from './actors/warriors/TyrantFace.js';
-// Using standard scream files for now, you can replace these mp3s later!
 import sageScreamFile from './assets/sounds/scream-sage.mp3'; 
 import tyrantScreamFile from './assets/sounds/scream-tyrant.mp3'; 
 
-// Added sage and tyrant to SUPER_ENTITIES so they inherit premium background security
 const SUPER_ENTITIES = ['fighter', 'prince', 'beast', 'berserker', 'anomaly', 'sage', 'tyrant'];
 
 // --- GLOBAL ROSTER DICTIONARY ---
@@ -61,12 +59,10 @@ const ENTITY_THRESHOLDS = {
         { level: 1, form: 'GOLD', required: 500 },
         { level: 3, form: 'DIVINE_ROSE', required: 3000 }
     ],
-    // BONUS: THE SAGE (Piccolo Archetype)
     sage: [
         { level: 0, form: 'BASE', required: 0 },
         { level: 3, form: 'FORGED_ORANGE', required: 3000 }
     ],
-    // BONUS: THE TYRANT (Frieza Archetype)
     tyrant: [
         { level: 0, form: 'BASE', required: 0 },
         { level: 3, form: 'GOLDEN', required: 3000 },
@@ -216,7 +212,7 @@ export default function App() {
                 const micData = audioRef.current.getScreamData();
                 
                 if (micData.isScreaming) {
-                    powerRef.current = Math.min(5000, powerRef.current + (micData.intensity * 25));
+                    powerRef.current = Math.min(5000, powerRef.current + (micData.intensity * 45));
                     lastInteractionTime.current = Date.now();
                     
                     if (visualRef.current) {
@@ -454,6 +450,50 @@ export default function App() {
         }
     };
 
+    // --- HUD HOTKEYS ---
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Only trigger if dashboard is closed (Pet Mode)
+            if (!isDashboardOpen && e.key.toLowerCase() === 'm') {
+                setSettings(prev => ({ ...prev, enableMicInput: !prev.enableMicInput }));
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isDashboardOpen]);
+
+    // --- HUD CALCULATIONS ---
+    const thresholds = ENTITY_THRESHOLDS[activeEntity];
+    let maxPower = 5000;
+    let nextThreshold = null;
+    let hypeText = '';
+
+    if (thresholds) {
+        maxPower = thresholds[thresholds.length - 1].required || 5000;
+        for (let i = 0; i < thresholds.length; i++) {
+            if (thresholds[i].required > powerMeter) {
+                nextThreshold = thresholds[i].required;
+                break;
+            }
+        }
+    }
+
+    const powerPercentage = Math.min(100, (powerMeter / maxPower) * 100);
+
+    if (nextThreshold) {
+        const gap = nextThreshold - powerMeter;
+        if (gap <= 200 && gap > 0) {
+            hypeText = 'LIMIT BREAK IMMINENT!';
+        } else if (gap <= 500 && gap > 0) {
+            hypeText = 'VERY CLOSE...';
+        } else if (gap <= 1000 && gap > 0) {
+            hypeText = 'LITTLE MORE!';
+        }
+    } else if (SUPER_ENTITIES.includes(activeEntity)) {
+        hypeText = 'MAX POWER!';
+    }
+
     return (
         <div 
             id="app-container" 
@@ -461,6 +501,12 @@ export default function App() {
             onMouseLeave={handleWebMouseLeave}
             style={{ width: '100vw', height: '100vh', position: 'relative' }}
         >
+            <style>{`
+                @keyframes hud-flicker {
+                    0% { opacity: 1; } 50% { opacity: 0.8; } 52% { opacity: 1; } 54% { opacity: 0.5; } 56% { opacity: 1; } 100% { opacity: 1; }
+                }
+            `}</style>
+            
             <div 
                 ref={canvasRef} 
                 onDoubleClick={handleOpenDashboard}
@@ -470,6 +516,75 @@ export default function App() {
                     '--wails-draggable': isDashboardOpen ? 'none' : 'drag' 
                 }} 
             />
+
+            {/* --- DESKTOP PET HUD OVERLAY --- */}
+            {!isDashboardOpen && SUPER_ENTITIES.includes(activeEntity) && !settings.invisibleMode && (
+                <div style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    pointerEvents: 'none', 
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    padding: '20px',
+                    zIndex: 10
+                }}>
+                    {/* Top-Right: Quick Mic Indicator */}
+                    <div style={{ alignSelf: 'flex-end' }}>
+                        <div
+                            style={{
+                                background: settings.enableMicInput ? '#ef4444' : 'rgba(17, 17, 17, 0.7)',
+                                color: settings.enableMicInput ? '#fff' : '#aaa',
+                                border: `1px solid ${settings.enableMicInput ? '#ef4444' : '#444'}`,
+                                padding: '6px 12px',
+                                fontFamily: '"Space Mono", monospace',
+                                fontSize: '10px',
+                                fontWeight: 'bold',
+                                backdropFilter: 'blur(4px)',
+                                transition: 'all 0.2s',
+                                userSelect: 'none'
+                            }}
+                        >
+                            [ MIC: {settings.enableMicInput ? 'ON' : 'OFF'} (Press M) ]
+                        </div>
+                    </div>
+
+                    {/* Bottom-Right: Power Meter & Hype Text */}
+                    <div style={{ alignSelf: 'flex-end', display: 'flex', alignItems: 'flex-end', gap: '15px' }}>
+                        <div style={{
+                            color: hypeText === 'LIMIT BREAK IMMINENT!' || hypeText === 'MAX POWER!' ? '#ef4444' : '#eab308',
+                            fontFamily: '"Space Mono", monospace',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            textShadow: '0 2px 4px rgba(0,0,0,1)',
+                            textTransform: 'uppercase',
+                            marginBottom: '4px',
+                            animation: hypeText ? 'hud-flicker 2s infinite' : 'none'
+                        }}>
+                            {hypeText}
+                        </div>
+
+                        {/* Vertical Meter */}
+                        <div style={{
+                            width: '10px',
+                            height: '140px',
+                            background: 'rgba(0,0,0,0.6)',
+                            border: '1px solid #444',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'flex-end',
+                            backdropFilter: 'blur(2px)'
+                        }}>
+                            <div style={{
+                                width: '100%',
+                                height: `${powerPercentage}%`,
+                                background: powerPercentage > 80 ? '#ef4444' : powerPercentage > 40 ? '#eab308' : '#10b981',
+                                transition: 'height 0.1s ease-out'
+                            }} />
+                        </div>
+                    </div>
+                </div>
+            )}
             
             {isDashboardOpen && (
                 <Dashboard 
