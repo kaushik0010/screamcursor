@@ -161,7 +161,16 @@ export class BerserkerFace {
     }
 
     getMesh() {
-        return this.group;
+        // We wrap the shaking group inside a static folder
+        if (!this.wrapperGroup) {
+            this.wrapperGroup = new THREE.Group();
+            this.wrapperGroup.add(this.group);
+            
+            // Apply scale and position to the wrapper so the animation loop can't override it!
+            this.wrapperGroup.scale.set(0.55, 0.55, 0.55);
+            this.wrapperGroup.position.y = -15; // Adjust this freely now!
+        }
+        return this.wrapperGroup;
     }
 
     setTargetForm(formString) {

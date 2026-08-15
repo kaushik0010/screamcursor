@@ -212,7 +212,7 @@ func (a *App) ValidateLicense(key string) (bool, error) {
 	reqBody := ValidateRequest{LicenseKey: key}
 	jsonBody, _ := json.Marshal(reqBody)
 
-	resp, err := http.Post("https://test.dodopayments.com/licenses/validate", "application/json", bytes.NewBuffer(jsonBody))
+	resp, err := http.Post("https://live.dodopayments.com/licenses/validate", "application/json", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return false, fmt.Errorf("network error: %v", err)
 	}
