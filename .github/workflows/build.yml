@@ -34,17 +34,15 @@ jobs:
       - name: Rename Executable for Website Compatibility
         run: |
           $binPath = "build\bin"
-          # Look for the installer first
+          # Look strictly for the NSIS installer
           $installer = Get-ChildItem -Path $binPath -Filter "*-installer.exe" | Select-Object -First 1
           
           if ($installer) {
               Write-Host "Found installer: $($installer.Name)"
               Rename-Item -Path $installer.FullName -NewName "screamcursor.exe"
           } else {
-              # Fallback: If NSIS fails, grab the portable .exe instead
-              $portable = Get-ChildItem -Path $binPath -Filter "*.exe" | Select-Object -First 1
-              Write-Host "Installer not found. Falling back to portable .exe: $($portable.Name)"
-              Rename-Item -Path $portable.FullName -NewName "screamcursor.exe"
+              Write-Error "CRITICAL: NSIS Installer not found! Wails failed to wrap the setup wizard."
+              exit 1
           }
 
       - name: Upload Release Asset
