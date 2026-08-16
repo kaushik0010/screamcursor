@@ -82,6 +82,7 @@ export default function App() {
     
     const [isDashboardOpen, setIsDashboardOpen] = useState(true);
     const [activeEntity, setActiveEntity] = useState('base'); 
+    const activeEntityRef = useRef('base'); // Keeps event listeners in sync
     
     const [targetForm, setTargetForm] = useState('BASE');
     const [isPremium, setIsPremium] = useState(false);
@@ -105,6 +106,11 @@ export default function App() {
     });
 
     const [settings, setSettingsState] = useState(settingsRef.current);
+
+    // Sync active entity to ref for global event listeners
+    useEffect(() => {
+        activeEntityRef.current = activeEntity;
+    }, [activeEntity]);
 
     const setSettings = (updater) => {
         setSettingsState(prev => {
@@ -186,7 +192,12 @@ export default function App() {
             const CHARGE_MULTIPLIER = 0.6; 
 
             if (!currentSettings.enableMicInput && data.speed > CHARGE_MIN_SPEED) {
-                powerRef.current = Math.min(5000, powerRef.current + (data.speed * CHARGE_MULTIPLIER));
+                // Fetch dynamic max cap based on active mesh
+                const currentEntity = activeEntityRef.current;
+                const thresholds = ENTITY_THRESHOLDS[currentEntity];
+                const currentMaxPower = thresholds ? thresholds[thresholds.length - 1].required || 5000 : 5000;
+
+                powerRef.current = Math.min(currentMaxPower, powerRef.current + (data.speed * CHARGE_MULTIPLIER));
                 lastInteractionTime.current = Date.now();
             }
         });
@@ -208,11 +219,14 @@ export default function App() {
                 powerRef.current = Math.max(0, powerRef.current - 5); 
             }
 
+            const thresholds = ENTITY_THRESHOLDS[activeEntity];
+            const currentMaxPower = thresholds ? thresholds[thresholds.length - 1].required || 5000 : 5000;
+
             if (audioRef.current && settingsRef.current.enableMicInput) {
                 const micData = audioRef.current.getScreamData();
                 
                 if (micData.isScreaming) {
-                    powerRef.current = Math.min(5000, powerRef.current + (micData.intensity * 45));
+                    powerRef.current = Math.min(currentMaxPower, powerRef.current + (micData.intensity * 45));
                     lastInteractionTime.current = Date.now();
                     
                     if (visualRef.current) {
@@ -227,7 +241,6 @@ export default function App() {
 
             let achievedLevel = 0;
             let achievedForm = 'BASE';
-            const thresholds = ENTITY_THRESHOLDS[activeEntity];
             
             if (thresholds) {
                 for (let i = thresholds.length - 1; i >= 0; i--) {
@@ -436,7 +449,11 @@ export default function App() {
             const CHARGE_MULTIPLIER = 0.6; 
 
             if (!currentSettings.enableMicInput && speed > CHARGE_MIN_SPEED) {
-                powerRef.current = Math.min(5000, powerRef.current + (speed * CHARGE_MULTIPLIER));
+                const currentEntity = activeEntityRef.current;
+                const thresholds = ENTITY_THRESHOLDS[currentEntity];
+                const currentMaxPower = thresholds ? thresholds[thresholds.length - 1].required || 5000 : 5000;
+
+                powerRef.current = Math.min(currentMaxPower, powerRef.current + (speed * CHARGE_MULTIPLIER));
                 lastInteractionTime.current = Date.now();
             }
         }

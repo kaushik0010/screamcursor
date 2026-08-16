@@ -26,13 +26,14 @@ jobs:
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
       - name: Build Wails App (Windows Installer)
-        # The -nsis flag tells Wails to wrap the .exe in a Setup Wizard!
         run: wails build -clean -m -nsis
+
+      - name: Rename Installer for Website Compatibility
+        run: Rename-Item -Path "build\bin\*-installer.exe" -NewName "screamcursor.exe"
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         with:
-          # Wails automatically adds the '-amd64-installer.exe' suffix
-          files: build/bin/*-installer.exe
+          files: build/bin/screamcursor.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
