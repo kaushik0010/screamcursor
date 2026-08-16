@@ -23,7 +23,16 @@ jobs:
           node-version: 22
 
       - name: Install NSIS
-        run: choco install nsis
+        run: choco install nsis -y
+
+      - name: Add NSIS to System Path
+        run: |
+          $nsisPath = "C:\Program Files (x86)\NSIS"
+          if (!(Test-Path $nsisPath)) {
+              $nsisPath = "C:\Program Files\NSIS"
+          }
+          echo "$nsisPath" >> $env:GITHUB_PATH
+          echo "NSIS path found at: $nsisPath"
 
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
@@ -34,14 +43,13 @@ jobs:
       - name: Rename Executable for Website Compatibility
         run: |
           $binPath = "build\bin"
-          # Look strictly for the NSIS installer
           $installer = Get-ChildItem -Path $binPath -Filter "*-installer.exe" | Select-Object -First 1
           
           if ($installer) {
               Write-Host "Found installer: $($installer.Name)"
               Rename-Item -Path $installer.FullName -NewName "screamcursor.exe"
           } else {
-              Write-Error "CRITICAL: NSIS Installer not found! Wails failed to wrap the setup wizard."
+              Write-Error "CRITICAL: NSIS Installer still not found!"
               exit 1
           }
 
