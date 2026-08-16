@@ -47,6 +47,11 @@ jobs:
           
           if ($installer) {
               Write-Host "Found installer: $($installer.Name)"
+              $targetPath = Join-Path $binPath "screamcursor.exe"
+              if (Test-Path $targetPath) {
+                  Remove-Item -Path $targetPath -Force
+                  Write-Host "Removed existing screamcursor.exe"
+              }
               Rename-Item -Path $installer.FullName -NewName "screamcursor.exe"
           } else {
               Write-Error "CRITICAL: NSIS Installer still not found!"
